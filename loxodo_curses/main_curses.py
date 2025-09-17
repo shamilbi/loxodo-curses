@@ -6,9 +6,9 @@ import sys
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
 
+from . import __version__
 from .utils import get_passwd, read_file
 from .vault import Vault
-from . import __version__
 
 
 class Win:
@@ -22,7 +22,6 @@ class Win:
         self.get_len_f = get_len_f
 
         self.win.keypad(1)
-        self.rows, self.cols = self.win.getmaxyx()
 
         self.cur = 0  # cursor y
         self.idx = 0  # source index
@@ -31,12 +30,13 @@ class Win:
         self.win.erase()
         len_ = self.get_len_f()
         if len_:
+            rows, cols = self.win.getmaxyx()
             self.cur = min(self.cur, self.idx)
-            for i in range(self.rows):
+            for i in range(rows):
                 idx = self.idx - self.cur + i
                 if not idx < len_:
                     break
-                s = self.get_f(idx)
+                s = self.get_f(idx)[:cols]
                 if i == self.cur:
                     self.win.addstr(i, 0, s, curses.color_pair(1) | curses.A_BOLD)
                 else:
@@ -52,7 +52,8 @@ class Win:
         len_ = self.get_len_f()
         if not len_:
             return
-        self.cur = min(self.rows - 1, len_ - 1)
+        rows, _ = self.win.getmaxyx()
+        self.cur = min(rows - 1, len_ - 1)
         self.idx = len_ - 1
         self.refresh()
 
@@ -60,16 +61,17 @@ class Win:
         len_ = self.get_len_f()
         if not len_ or not self.idx + 1 < len_:
             return
+        rows, cols = self.win.getmaxyx()
         prev_s = self.get_f(self.idx)
         next_s = self.get_f(self.idx + 1)
-        self.win.addstr(self.cur, 0, f"{prev_s}")
-        if self.cur + 1 < self.rows:
+        self.win.addstr(self.cur, 0, f"{prev_s}"[:cols])
+        if self.cur + 1 < rows:
             self.cur += 1
         else:
             self.win.move(0, 0)
             self.win.deleteln()
-            self.cur = self.rows - 1
-        self.win.addstr(self.cur, 0, f"{next_s}", curses.color_pair(1) | curses.A_BOLD)
+            self.cur = rows - 1
+        self.win.addstr(self.cur, 0, f"{next_s}"[:cols], curses.color_pair(1) | curses.A_BOLD)
         self.idx += 1
         self.win.refresh()
 
@@ -77,15 +79,16 @@ class Win:
         len_ = self.get_len_f()
         if not len_ or self.idx - 1 < 0:
             return
+        _, cols = self.win.getmaxyx()
         prev_s = self.get_f(self.idx)
         next_s = self.get_f(self.idx - 1)
-        self.win.addstr(self.cur, 0, f"{prev_s}")
+        self.win.addstr(self.cur, 0, f"{prev_s}"[:cols])
         if self.cur > 0:
             self.cur -= 1
         else:
             self.win.move(0, 0)
             self.win.insdelln(1)
-        self.win.addstr(self.cur, 0, f"{next_s}", curses.color_pair(1) | curses.A_BOLD)
+        self.win.addstr(self.cur, 0, f"{next_s}"[:cols], curses.color_pair(1) | curses.A_BOLD)
         self.idx -= 1
         self.win.refresh()
 
@@ -93,7 +96,8 @@ class Win:
         len_ = self.get_len_f()
         if not len_:
             return
-        idx = self.idx + self.rows
+        rows, _ = self.win.getmaxyx()
+        idx = self.idx + rows
         if idx < len_:
             self.idx = idx
             self.refresh()
@@ -102,7 +106,7 @@ class Win:
             delta = idx - self.idx
             if not delta:
                 self.scroll_bottom()
-            elif self.cur + delta < self.rows:
+            elif self.cur + delta < rows:
                 self.cur += delta
                 self.idx = idx
                 self.refresh()
@@ -113,7 +117,8 @@ class Win:
         len_ = self.get_len_f()
         if not len_:
             return
-        idx = self.idx - self.rows
+        rows, _ = self.win.getmaxyx()
+        idx = self.idx - rows
         if not idx < 0:
             self.idx = idx
             self.refresh()
@@ -168,7 +173,8 @@ class Main:
         self.screen.clear()
         header = self.vault.header
         s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
-        self.screen.addstr(0, 0, s)
+        _, cols = self.win.win.getmaxyx()
+        self.screen.addstr(0, 0, s[:cols])
         self.screen.refresh()
         self.win.refresh()
 
@@ -239,7 +245,7 @@ class Main:
         win_text(self.screen, header, help_)
 
 
-def win_text(screen, header: str, help_: list[tuple[str, str]], y=0, x=0):
+def win_text(screen, header: str, help_: list[tuple[str, str]]):
     '''
     help_ = [
         (key1, help1),
@@ -259,18 +265,29 @@ def win_text(screen, header: str, help_: list[tuple[str, str]], y=0, x=0):
     rows2 = rows + 2  # border=2
     cols = max(len(header), max(len(i) for i in iter_help()), len(footer))
     cols2 = cols + 2  # border=2
+
+    max_rows, max_cols = screen.getmaxyx()
+    rows2 = min(rows2, max_rows)
+    cols2 = min(cols2, max_cols)
+    cols = cols2 - 2
+    header = header[:cols2]
+    y = (max_rows - rows2) // 2
+    x = (max_cols - cols2) // 2
+
     win = screen.derwin(rows2, cols2, y, x)
     win.keypad(1)
+    win.erase()
     win.box()
 
     row = 0
-    win.addstr(row, (cols2 - len(header)) // 2, header)
+    x = (cols2 - len(header)) // 2
+    win.addstr(row, x, header[: cols2 - x])
     col = 1
     for s in iter_help():
         row += 1
-        win.addstr(row, col, s)
+        win.addstr(row, col, s[:cols])
     row += 1
-    win.addstr(row, col, footer)
+    win.addstr(row, col, footer[:cols])
 
     # Wait for any key press
     win.getch()
