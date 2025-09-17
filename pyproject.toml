@@ -1,0 +1,46 @@
+[project]
+name = 'loxodo-curses'
+description = 'A Password Safe V3 compatible password vault'
+authors = [
+    {name = "Christoph Sommer", email = "mail@christoph-sommer.de"},
+    {name = "Shamil Bikineyev", email = "shamilbi@gmail.com"},
+]
+readme = {file = "README.rst", content-type = "text/x-rst"}
+urls.homepage = 'https://github.com/shamilbi/loxodo-curses'
+
+license = 'GPL-2.0+'
+license-files = ["LICENSE.txt"]
+
+requires-python = ">=3.9"
+dependencies = [
+    "mintotp",
+]
+
+dynamic = ["version"]
+scripts.loxodo-curses = "loxodo_curses.__main__:main"
+
+keywords = [
+    "password manager",
+    "security",
+    "privacy",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+path = "loxodo_curses/__init__.py"
+
+[tool.hatch.build]
+ignore-vcs = true
+include = [
+    "loxodo_curses",
+]
+exclude = [
+    '*.tmp',
+]
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
