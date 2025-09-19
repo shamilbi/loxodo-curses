@@ -14,6 +14,16 @@ from .utils import get_passwd, read_file
 from .vault import Record, Vault
 
 
+def win_addstr(win, row: int, col: int, s: str, attr: int = 0):
+    try:
+        win.addstr(row, col, s, attr)
+    except curses.error:
+        # https://docs.python.org/3/library/curses.html#curses.window.addstr
+        # Attempting to write to the lower right corner of a window, subwindow, or pad
+        # will cause an exception to be raised after the string is printed.
+        pass
+
+
 class Win:
     def __init__(self, win, get_f, get_len_f, refresh_deps_f):
         '''
@@ -29,6 +39,7 @@ class Win:
 
         self.cur = 0  # cursor y
         self.idx = 0  # source index
+        self.attr1 = curses.color_pair(1) | curses.A_BOLD
 
     def refresh(self):
         self.win.erase()
@@ -42,9 +53,9 @@ class Win:
                     break
                 s = self.get_f(idx)[:cols]
                 if i == self.cur:
-                    self.win.addstr(i, 0, s, curses.color_pair(1) | curses.A_BOLD)
+                    win_addstr(self.win, i, 0, s, attr=self.attr1)
                 else:
-                    self.win.addstr(i, 0, s)
+                    win_addstr(self.win, i, 0, s)
             self.win.move(self.cur, 0)
         self.win.refresh()
         self.refresh_deps_f()
@@ -69,14 +80,14 @@ class Win:
         rows, cols = self.win.getmaxyx()
         prev_s = self.get_f(self.idx)
         next_s = self.get_f(self.idx + 1)
-        self.win.addstr(self.cur, 0, f"{prev_s}"[:cols])
+        win_addstr(self.win, self.cur, 0, prev_s[:cols])
         if self.cur + 1 < rows:
             self.cur += 1
         else:
             self.win.move(0, 0)
             self.win.deleteln()
             self.cur = rows - 1
-        self.win.addstr(self.cur, 0, f"{next_s}"[:cols], curses.color_pair(1) | curses.A_BOLD)
+        win_addstr(self.win, self.cur, 0, next_s[:cols], attr=self.attr1)
         self.idx += 1
         self.win.refresh()
         self.refresh_deps_f()
@@ -88,13 +99,13 @@ class Win:
         _, cols = self.win.getmaxyx()
         prev_s = self.get_f(self.idx)
         next_s = self.get_f(self.idx - 1)
-        self.win.addstr(self.cur, 0, f"{prev_s}"[:cols])
+        win_addstr(self.win, self.cur, 0, prev_s[:cols])
         if self.cur > 0:
             self.cur -= 1
         else:
             self.win.move(0, 0)
             self.win.insdelln(1)
-        self.win.addstr(self.cur, 0, f"{next_s}"[:cols], curses.color_pair(1) | curses.A_BOLD)
+        win_addstr(self.win, self.cur, 0, next_s[:cols], attr=self.attr1)
         self.idx -= 1
         self.win.refresh()
         self.refresh_deps_f()
@@ -209,7 +220,7 @@ class Main:
         header = self.vault.header
         s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
         _, cols = self.win.win.getmaxyx()
-        self.screen.addstr(0, 0, s[:cols])
+        win_addstr(self.screen, 0, 0, s[:cols])
         self.screen.refresh()
 
         self.win.refresh()
@@ -337,13 +348,7 @@ def record2win(r: Record, win):
             row += 1
             if not row < rows:
                 return
-            try:
-                win.addstr(row, 0, s)
-            except curses.error:
-                # https://docs.python.org/3/library/curses.html#curses.window.addstr
-                # Attempting to write to the lower right corner of a window, subwindow, or pad
-                # will cause an exception to be raised after the string is printed.
-                pass
+            win_addstr(win, row, 0, s)
 
 
 def record2file(r: Record, fpath: str, passwd=False):
@@ -387,13 +392,13 @@ def win_text(screen, header: str, help_: list[tuple[str, str]]):
 
     row = 0
     x = (cols2 - len(header)) // 2
-    win.addstr(row, x, header[: cols2 - x])
+    win_addstr(win, row, x, header[: cols2 - x])
     col = 1
     for s in iter_help():
         row += 1
-        win.addstr(row, col, s[:cols])
+        win_addstr(win, row, col, s[:cols])
     row += 1
-    win.addstr(row, col, footer[:cols])
+    win_addstr(win, row, col, footer[:cols])
 
     # Wait for any key press
     win.getch()
