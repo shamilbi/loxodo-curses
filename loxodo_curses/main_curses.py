@@ -2,17 +2,20 @@
 # from os.path import exists, expanduser, join
 import curses
 import curses.ascii
+import io
+import os
 import sys
+import tempfile
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
 
 from . import __version__
 from .utils import get_passwd, read_file
-from .vault import Vault
+from .vault import Record, Vault
 
 
 class Win:
-    def __init__(self, win, get_f, get_len_f):
+    def __init__(self, win, get_f, get_len_f, refresh_deps_f):
         '''
         s = self.get_f(idx)
         len_ = self.get_len_f()
@@ -20,6 +23,7 @@ class Win:
         self.win = win
         self.get_f = get_f
         self.get_len_f = get_len_f
+        self.refresh_deps_f = refresh_deps_f
 
         self.win.keypad(1)
 
@@ -43,6 +47,7 @@ class Win:
                     self.win.addstr(i, 0, s)
             self.win.move(self.cur, 0)
         self.win.refresh()
+        self.refresh_deps_f()
 
     def scroll_top(self):
         self.idx = self.cur = 0
@@ -74,6 +79,7 @@ class Win:
         self.win.addstr(self.cur, 0, f"{next_s}"[:cols], curses.color_pair(1) | curses.A_BOLD)
         self.idx += 1
         self.win.refresh()
+        self.refresh_deps_f()
 
     def scroll_up(self):
         len_ = self.get_len_f()
@@ -91,6 +97,7 @@ class Win:
         self.win.addstr(self.cur, 0, f"{next_s}"[:cols], curses.color_pair(1) | curses.A_BOLD)
         self.idx -= 1
         self.win.refresh()
+        self.refresh_deps_f()
 
     def scroll_page_down(self):
         len_ = self.get_len_f()
@@ -146,8 +153,36 @@ class Main:
         self.records = [r for r in self.vault.records if self.filter_record(r)]
         self.records.sort(key=self.sort_function)
 
-        win = self.screen.derwin(curses.LINES - 2, curses.COLS, 2, 0)  # pylint: disable=no-member
-        self.win = Win(win, self.get_record, self.records_len)
+        self.create_windows()
+
+    def create_windows(self):
+        '''
+        ... header ...
+
+        records ... | record |
+            2/3        1/3
+        '''
+        rows, cols = (curses.LINES - 2, curses.COLS)  # pylint: disable=no-member
+        cols2 = min(cols // 3, 30)
+        cols1 = cols - cols2
+
+        win = self.screen.derwin(rows, cols1, 2, 0)
+        self.win = Win(win, self.get_record, self.records_len, self.refresh_win_deps)
+
+        self.win2 = self.screen.derwin(rows, cols2, 2, cols1)
+
+    def refresh_win_deps(self):
+        rows, cols = self.win2.getmaxyx()
+        rows -= 2  # -borders
+        cols -= 2  # -borders
+        win = self.win2.derwin(rows, cols, 1, 1)
+        win.erase()
+        idx = self.win.idx
+        if idx < len(self.records):
+            r = self.records[idx]
+            # win.addstr(0, 0, record2str(r))
+            record2win(r, win)
+        self.win2.refresh()
 
     def get_record(self, i):
         len_ = len(self.records)
@@ -171,12 +206,18 @@ class Main:
 
     def refresh_all(self):
         self.screen.clear()
+
         header = self.vault.header
         s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
         _, cols = self.win.win.getmaxyx()
         self.screen.addstr(0, 0, s[:cols])
         self.screen.refresh()
+
         self.win.refresh()
+
+        self.win2.erase()
+        self.win2.box()
+        self.refresh_win_deps()
 
     def run(self):
         self.input_loop()
@@ -202,9 +243,9 @@ class Main:
                     self.win.scroll_page_down()
                 elif char_ord == curses.KEY_PPAGE:  # Page up
                     self.win.scroll_page_up()
-                # elif char.upper() == 'E':
-                #     self.launch_editor()  # not using curses
-                #     self.screen.refresh()
+                elif char == 'e':
+                    self.launch_editor()  # not using curses
+                    self.screen.refresh()
                 elif char.upper() == 'H':  # Print help screen
                     self.print_help_screen()
                     self.refresh_all()
@@ -217,24 +258,31 @@ class Main:
     def shutdown(self):
         sys.exit(0)
 
-    # def launch_editor(self):
-    #     curses.endwin()
-    #     editor = environ.get('EDITOR')
-    #     if editor is None:  # Default editors
-    #         if sys.platform == 'win32':
-    #             editor = 'notepad.exe'
-    #         elif sys.platform == 'darwin':
-    #             editor = 'nano'
-    #         elif 'linux' in sys.platform:
-    #             editor = 'vi'
-    #     system(f"{editor} {fpath}")
+    def launch_editor(self):
+        idx = self.win.idx
+        if not idx < len(self.records):
+            return
+        r = self.records[idx]
+        curses.endwin()
+        fd = None
+        fpath = ''
+        try:
+            fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
+            # t1 = os.path.getmtime(fpath)
+            record2file(r, fpath)
+            os.system(f'vim "{fpath}"')
+            # t2 = os.path.getmtime(fpath)
+        finally:
+            if fd:
+                os.close(fd)
+                os.remove(fpath)
 
     def print_help_screen(self):
         header = "Help information:"
         help_ = [
             ("h", "This help screen"),
             ("q, Esc", "Quit the program"),
-            # ("e", "Edit current record"),
+            ("e", "Edit current record w/o password"),
             ("j, Down", "Move selection down"),
             ("k, Up", "Move selection up"),
             ("PgUp", "Page up"),
@@ -243,6 +291,57 @@ class Main:
             ("G, End", "Move to last item"),
         ]
         win_text(self.screen, header, help_)
+
+
+def notes2str(r: Record) -> str:
+    s = ''
+    if r.notes:
+        s = r.notes.rstrip().replace('\r\n', '\n')
+    return s
+
+
+def record2str(r: Record) -> str:
+    with io.StringIO() as fp:
+        fp.write(f'Title:\n{r.title}\n\n')
+        fp.write(f'Group:\n{r.group}\n\n')
+        fp.write(f'Username:\n{r.user}\n\n')
+        fp.write('Notes:\n')
+        if s := notes2str(r):
+            fp.write(f'{s}\n')
+        return fp.getvalue()
+
+
+def chunkstring(s: str, chunk_len: int):
+    len_ = len(s)
+    i = 0
+    while True:
+        yield s[i : i + chunk_len]  # works even if s='' # noqa: E203
+        # E203 whitespace before ':'
+        i += chunk_len
+        if not i < len_:
+            break
+
+
+def record2win(r: Record, win):
+    rows, cols = win.getmaxyx()
+    row = -1
+    for line in record2str(r).splitlines():
+        for s in chunkstring(line, cols):
+            row += 1
+            if not row < rows:
+                return
+            try:
+                win.addstr(row, 0, s)
+            except curses.error:
+                # https://docs.python.org/3/library/curses.html#curses.window.addstr
+                # Attempting to write to the lower right corner of a window, subwindow, or pad
+                # will cause an exception to be raised after the string is printed.
+                pass
+
+
+def record2file(r: Record, fpath: str):
+    with open(fpath, 'w', encoding='utf-8') as fp:
+        fp.write(record2str(r))
 
 
 def win_text(screen, header: str, help_: list[tuple[str, str]]):
