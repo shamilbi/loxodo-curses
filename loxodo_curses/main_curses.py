@@ -155,9 +155,19 @@ class RowString:
         # min_ = min(len(self.widths), len(values))
         s = ''
         for w, v in zip(self.widths, values):
-            s += f'{v[:w]:<{w}} '
+            if not w:
+                # last value
+                s += v
+            else:
+                s += f'{v[:w]:<{w}} '
         s = s.rstrip()  # last item stripped
         return s
+
+
+def int2time(i: int):
+    if not i:
+        return ''
+    return datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
 
 
 class Main:  # pylint: disable=too-many-instance-attributes
@@ -180,7 +190,7 @@ class Main:  # pylint: disable=too-many-instance-attributes
         self.records = [r for r in self.vault.records if self.filter_record(r)]
         self.records.sort(key=self.sort_function)
 
-        self.row_string = RowString(35, 30, 19)  # title, user, last_mod
+        self.row_string = RowString(35, 30, 19, 19, 0)  # title, user, last_mod, created, group
 
         self.create_windows()
 
@@ -192,7 +202,7 @@ class Main:  # pylint: disable=too-many-instance-attributes
             2/3        1/3
         '''
         rows, cols = (curses.LINES - 2, curses.COLS)  # pylint: disable=no-member
-        cols2 = min(cols // 3, 30)
+        cols2 = min(cols // 3, 35)
         cols1 = cols - cols2
 
         win = self.screen.derwin(rows, cols1, 2, 0)
@@ -216,12 +226,8 @@ class Main:  # pylint: disable=too-many-instance-attributes
         len_ = len(self.records)
         if not i < len_:
             return None
-        # return self.records[i].title
         r = self.records[i]
-        # s = f'{r.title[:35]:<35} {r.user[:30]:<30}'
-        # return s
-        lm = datetime.fromtimestamp(r.last_mod).strftime('%Y-%m-%d %H:%M:%S')
-        return self.row_string.value(r.title, r.user, lm)
+        return self.row_string.value(r.title, r.user, int2time(r.last_mod), int2time(r.created), r.group)
 
     def records_len(self) -> int:
         return len(self.records)
@@ -244,7 +250,7 @@ class Main:  # pylint: disable=too-many-instance-attributes
         s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
         _, cols = self.win.win.getmaxyx()
         win_addstr(self.screen, 0, 0, s[:cols])
-        win_addstr(self.screen, 1, 0, self.row_string.value('Title:', 'Username:', 'ModTime:'))
+        win_addstr(self.screen, 1, 0, self.row_string.value('Title:', 'Username:', 'ModTime:', 'CreateTime:', 'Group:'))
         self.screen.refresh()
 
         self.win.refresh()
