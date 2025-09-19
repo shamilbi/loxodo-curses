@@ -180,7 +180,6 @@ class Main:
         idx = self.win.idx
         if idx < len(self.records):
             r = self.records[idx]
-            # win.addstr(0, 0, record2str(r))
             record2win(r, win)
         self.win2.refresh()
 
@@ -246,6 +245,9 @@ class Main:
                 elif char == 'e':
                     self.launch_editor()  # not using curses
                     self.screen.refresh()
+                elif char == 'E':
+                    self.launch_editor(passwd=True)  # not using curses
+                    self.screen.refresh()
                 elif char.upper() == 'H':  # Print help screen
                     self.print_help_screen()
                     self.refresh_all()
@@ -258,7 +260,7 @@ class Main:
     def shutdown(self):
         sys.exit(0)
 
-    def launch_editor(self):
+    def launch_editor(self, passwd=False):
         idx = self.win.idx
         if not idx < len(self.records):
             return
@@ -269,7 +271,7 @@ class Main:
         try:
             fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
             # t1 = os.path.getmtime(fpath)
-            record2file(r, fpath)
+            record2file(r, fpath, passwd=passwd)
             os.system(f'vim "{fpath}"')
             # t2 = os.path.getmtime(fpath)
         finally:
@@ -283,6 +285,7 @@ class Main:
             ("h", "This help screen"),
             ("q, Esc", "Quit the program"),
             ("e", "Edit current record w/o password"),
+            ("E", "Edit current record w/ password"),
             ("j, Down", "Move selection down"),
             ("k, Up", "Move selection up"),
             ("PgUp", "Page up"),
@@ -297,14 +300,18 @@ def notes2str(r: Record) -> str:
     s = ''
     if r.notes:
         s = r.notes.rstrip().replace('\r\n', '\n')
+        s = s.replace('\t', ' ' * 4)
     return s
 
 
-def record2str(r: Record) -> str:
+def record2str(r: Record, passwd=False) -> str:
     with io.StringIO() as fp:
         fp.write(f'Title:\n{r.title}\n\n')
         fp.write(f'Group:\n{r.group}\n\n')
         fp.write(f'Username:\n{r.user}\n\n')
+        if passwd:
+            fp.write(f'Password:\n{r.passwd}\n\n')
+        fp.write(f'URL:\n{r.url}\n\n')
         fp.write('Notes:\n')
         if s := notes2str(r):
             fp.write(f'{s}\n')
@@ -339,9 +346,9 @@ def record2win(r: Record, win):
                 pass
 
 
-def record2file(r: Record, fpath: str):
+def record2file(r: Record, fpath: str, passwd=False):
     with open(fpath, 'w', encoding='utf-8') as fp:
-        fp.write(record2str(r))
+        fp.write(record2str(r, passwd=passwd))
 
 
 def win_text(screen, header: str, help_: list[tuple[str, str]]):
