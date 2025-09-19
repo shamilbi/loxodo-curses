@@ -6,6 +6,7 @@ import io
 import os
 import sys
 import tempfile
+from datetime import datetime
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
 
@@ -144,7 +145,22 @@ class Win:
             self.scroll_top()
 
 
-class Main:
+class RowString:
+    '{value1:<width1} {value2:<width2} ...'
+
+    def __init__(self, *widths: int):
+        self.widths = widths
+
+    def value(self, *values: str):
+        # min_ = min(len(self.widths), len(values))
+        s = ''
+        for w, v in zip(self.widths, values):
+            s += f'{v[:w]:<{w}} '
+        s = s.rstrip()  # last item stripped
+        return s
+
+
+class Main:  # pylint: disable=too-many-instance-attributes
     def __init__(self, vault: Vault, fpath: str, screen):
         self.vault = vault
         self.vault_fpath = fpath
@@ -163,6 +179,8 @@ class Main:
         self.sort_function = lambda e1: (e1.title.lower(), e1.user.lower(), e1.last_mod)
         self.records = [r for r in self.vault.records if self.filter_record(r)]
         self.records.sort(key=self.sort_function)
+
+        self.row_string = RowString(35, 30, 19)  # title, user, last_mod
 
         self.create_windows()
 
@@ -196,9 +214,14 @@ class Main:
 
     def get_record(self, i):
         len_ = len(self.records)
-        if i < 0 and i < -len_ or i >= 0 and not i < len_:
+        if not i < len_:
             return None
-        return self.records[i].title
+        # return self.records[i].title
+        r = self.records[i]
+        # s = f'{r.title[:35]:<35} {r.user[:30]:<30}'
+        # return s
+        lm = datetime.fromtimestamp(r.last_mod).strftime('%Y-%m-%d %H:%M:%S')
+        return self.row_string.value(r.title, r.user, lm)
 
     def records_len(self) -> int:
         return len(self.records)
@@ -221,6 +244,7 @@ class Main:
         s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
         _, cols = self.win.win.getmaxyx()
         win_addstr(self.screen, 0, 0, s[:cols])
+        win_addstr(self.screen, 1, 0, self.row_string.value('Title:', 'Username:', 'ModTime:'))
         self.screen.refresh()
 
         self.win.refresh()
@@ -356,7 +380,7 @@ def record2file(r: Record, fpath: str, passwd=False):
         fp.write(record2str(r, passwd=passwd))
 
 
-def win_text(screen, header: str, help_: list[tuple[str, str]]):
+def win_text(screen, header: str, help_: list[tuple[str, str]]):  # pylint: disable=too-many-locals
     '''
     help_ = [
         (key1, help1),
