@@ -44,3 +44,12 @@ exclude = [
 [tool.black]
 line-length = 120
 skip-string-normalization = true
+
+[tool.pylint]
+"messages control".disable = [
+    "missing-class-docstring",
+    "missing-function-docstring",
+    "missing-module-docstring",
+    "too-few-public-methods",
+]
+reports.score = false
