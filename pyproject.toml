@@ -53,3 +53,4 @@ skip-string-normalization = true
     "too-few-public-methods",
 ]
 reports.score = false
+format.max-line-length = 120
