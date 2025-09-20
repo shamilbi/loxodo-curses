@@ -9,6 +9,7 @@ import tempfile
 from datetime import datetime
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
+from typing import Callable
 
 from . import __version__
 from .utils import get_passwd, read_file
@@ -170,6 +171,27 @@ def int2time(i: int):
     return datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
 
 
+SORT: dict[str, Callable[[Record], tuple]] = {
+    't': lambda r: (r.title.lower(), r.user.lower(), r.last_mod),
+    'u': lambda r: (r.user.lower(), r.last_mod),
+    'm': lambda r: (r.last_mod, r.title.lower(), r.user.lower()),
+    'c': lambda r: (r.created, r.title.lower(), r.user.lower()),
+    'g': lambda r: (r.group.lower(), r.last_mod),
+}
+
+HEADERS: dict[str, str] = {
+    't': 'Title',
+    'u': 'Username',
+    'm': 'ModTime',
+    'c': 'Created',
+    'g': 'Group',
+}
+
+SORT_KEYS = ('t', 'u', 'm', 'c', 'g')
+SORT_UP = '\u2191'
+SORT_DOWN = '\u2193'
+
+
 class Main:  # pylint: disable=too-many-instance-attributes
     def __init__(self, vault: Vault, fpath: str, screen):
         self.vault = vault
@@ -186,13 +208,44 @@ class Main:  # pylint: disable=too-many-instance-attributes
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
 
         self._filterstring = ''
-        self.sort_function = lambda e1: (e1.title.lower(), e1.user.lower(), e1.last_mod)
-        self.records = [r for r in self.vault.records if self.filter_record(r)]
-        self.records.sort(key=self.sort_function)
+        self.sortedby = '_'  # not defined
+        self.sort()
 
-        self.row_string = RowString(35, 30, 19, 19, 0)  # title, user, last_mod, created, group
+        # title, user, last_mod, created, group
+        self.row_string = RowString(35, 30, 19, 19, 0)
 
         self.create_windows()
+
+    def sort(self, sortby: str = 't') -> bool:
+        if not sortby or sortby == self.sortedby:
+            return False
+        if (key := sortby.lower()) not in SORT:
+            return False
+        sort_f = SORT[key]
+        reverse = key != sortby
+        self.sortedby = sortby
+        self.records = [r for r in self.vault.records if self.filter_record(r)]
+        self.records.sort(key=sort_f)
+        if reverse:
+            self.records.reverse()
+        return True
+
+    def sort2(self, sortby: str):
+        idx = self.win.idx
+        uuid = None
+        if idx < self.records_len():
+            r = self.records[idx]
+            uuid = r.uuid  # to find the record after sorting
+        if not self.sort(sortby):
+            return
+        # find new index of the record
+        if uuid:
+            g = (i for i, x in enumerate(self.records) if x.uuid == uuid)  # generator
+            idx2 = next(g, 0)
+        else:
+            idx2 = 0
+        self.win.idx = idx2
+        self.refresh_all()
 
     def create_windows(self):
         '''
@@ -243,6 +296,21 @@ class Main:  # pylint: disable=too-many-instance-attributes
             return True
         return False
 
+    def create_header(self):
+        headers = []
+        key = self.sortedby.lower()
+        reverse = key != self.sortedby
+        for key2 in SORT_KEYS:
+            title = HEADERS[key2]
+            if key == key2:
+                if reverse:
+                    headers.append(f'{title}({SORT_UP}):')
+                else:
+                    headers.append(f'{title}({SORT_DOWN}):')
+            else:
+                headers.append(f'{title}:')
+        return self.row_string.value(*headers)
+
     def refresh_all(self):
         self.screen.clear()
 
@@ -250,7 +318,7 @@ class Main:  # pylint: disable=too-many-instance-attributes
         s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
         _, cols = self.win.win.getmaxyx()
         win_addstr(self.screen, 0, 0, s[:cols])
-        win_addstr(self.screen, 1, 0, self.row_string.value('Title:', 'Username:', 'ModTime:', 'CreateTime:', 'Group:'))
+        win_addstr(self.screen, 1, 0, self.create_header())
         self.screen.refresh()
 
         self.win.refresh()
@@ -262,14 +330,27 @@ class Main:  # pylint: disable=too-many-instance-attributes
     def run(self):
         self.input_loop()
 
-    def input_loop(self):
+    def handle_alt_key(self):
+        # https://stackoverflow.com/a/22362849
+        self.screen.nodelay(True)
+        ch = self.screen.getch()  # get the key pressed after ALT
+        self.screen.nodelay(False)
+        if ch == -1:
+            self.shutdown()
+        if (ch2 := chr(ch)).lower() in SORT_KEYS:
+            self.sort2(ch2)
+
+    def input_loop(self):  # pylint: disable=too-many-branches
         self.refresh_all()
         while True:
             try:
                 char_ord = self.screen.getch()
                 char = chr(char_ord)
 
-                if char.upper() == 'Q' or char_ord == curses.ascii.ESC:  # Esc or Q
+                if char_ord == curses.ascii.ESC:  # Esc
+                    self.handle_alt_key()
+                # elif char.upper() == 'Q' or char_ord == curses.ascii.ESC:  # Esc or Q
+                elif char.upper() == 'Q':
                     self.shutdown()
                 elif char.upper() == 'J' or char_ord == curses.KEY_DOWN:  # Down or J
                     self.win.scroll_down()
