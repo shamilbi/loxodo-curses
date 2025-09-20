@@ -6,24 +6,13 @@ import io
 import os
 import sys
 import tempfile
-from datetime import datetime
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
 from typing import Callable
 
 from . import __version__
-from .utils import get_passwd, read_file
+from .utils import RowString, chunkstring, get_passwd, int2time, read_file, win_addstr
 from .vault import Record, Vault
-
-
-def win_addstr(win, row: int, col: int, s: str, attr: int = 0):
-    try:
-        win.addstr(row, col, s, attr)
-    except curses.error:
-        # https://docs.python.org/3/library/curses.html#curses.window.addstr
-        # Attempting to write to the lower right corner of a window, subwindow, or pad
-        # will cause an exception to be raised after the string is printed.
-        pass
 
 
 class Win:
@@ -144,31 +133,6 @@ class Win:
             self.refresh()
         else:
             self.scroll_top()
-
-
-class RowString:
-    '{value1:<width1} {value2:<width2} ...'
-
-    def __init__(self, *widths: int):
-        self.widths = widths
-
-    def value(self, *values: str):
-        # min_ = min(len(self.widths), len(values))
-        s = ''
-        for w, v in zip(self.widths, values):
-            if not w:
-                # last value
-                s += v
-            else:
-                s += f'{v[:w]:<{w}} '
-        s = s.rstrip()  # last item stripped
-        return s
-
-
-def int2time(i: int):
-    if not i:
-        return ''
-    return datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
 
 
 SORT: dict[str, Callable[[Record], tuple]] = {
@@ -414,6 +378,8 @@ class Main:  # pylint: disable=too-many-instance-attributes
             ("PgDown", "Page down"),
             ("g, Home", "Move to first item"),
             ("G, End", "Move to last item"),
+            ("Alt_{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
+            ("Alt_{T,U,M,C,G}", "Sort reversed"),
         ]
         win_text(self.screen, header, help_)
 
@@ -438,17 +404,6 @@ def record2str(r: Record, passwd=False) -> str:
         if s := notes2str(r):
             fp.write(f'{s}\n')
         return fp.getvalue()
-
-
-def chunkstring(s: str, chunk_len: int):
-    len_ = len(s)
-    i = 0
-    while True:
-        yield s[i : i + chunk_len]  # works even if s='' # noqa: E203
-        # E203 whitespace before ':'
-        i += chunk_len
-        if not i < len_:
-            break
 
 
 def record2win(r: Record, win):
