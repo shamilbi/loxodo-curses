@@ -11,7 +11,7 @@ from signal import SIGINT, SIGTERM, signal
 from typing import Callable
 
 from . import __version__
-from .utils import RowString, chunkstring, get_passwd, int2time, read_file, win_addstr
+from .utils import RowString, chunkstring, get_passwd, input_file, int2time, win_addstr
 from .vault import Record, Vault
 
 
@@ -482,7 +482,7 @@ def main2(vault: Vault, fpath: str, screen):
 
 def main():
     try:
-        fpath = read_file('Pwsafe file: ')
+        fpath = input_file('Pwsafe file: ')
         passwd = get_passwd('Password: ')
         vault = Vault(passwd.encode('latin1', 'replace'), fpath)
         main2_ = partial(main2, vault, fpath)

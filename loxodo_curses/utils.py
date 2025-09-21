@@ -9,21 +9,21 @@ from typing import Generator
 
 
 @lru_cache(maxsize=1)
-def glob_text(text: str):
+def _glob_text(text: str):
     return glob.glob(os.path.expanduser(text) + '*')
 
 
-def complete(text: str, state: int):
+def _complete(text: str, state: int):
     'https://stackoverflow.com/questions/6656819/filepath-autocompletion-using-users-input'
     # return (glob.glob(text+'*')+[None])[state]
     # return (glob.glob(os.path.expanduser(text) + '*') + [None])[state]
-    return (glob_text(text) + [None])[state]
+    return (_glob_text(text) + [None])[state]
 
 
-def read_file(prompt: str):
+def input_file(prompt: str):
     readline.set_completer_delims(' \t\n;')
     readline.parse_and_bind("tab: complete")
-    readline.set_completer(complete)
+    readline.set_completer(_complete)
     while True:
         s = input(f'{prompt}')
         s = s.strip()
