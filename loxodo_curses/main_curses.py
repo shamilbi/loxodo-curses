@@ -16,7 +16,7 @@ from typing import Callable
 
 from . import __version__
 from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard, win_addstr
-from .vault import Record, Vault
+from .vault import BadPasswordError, Record, Vault
 
 
 class Win:
@@ -551,8 +551,14 @@ def main2(vault: Vault, fpath: str, screen):
 def main():
     try:
         fpath = input_file('Pwsafe file: ')
-        passwd = get_passwd('Password: ')
-        vault = Vault(passwd.encode('latin1', 'replace'), fpath)
+        while True:
+            try:
+                passwd = get_passwd('Password: ')
+                vault = Vault(passwd.encode('latin1', 'replace'), fpath)
+                break
+            except BadPasswordError:
+                print('bad password!')
+                continue
         main2_ = partial(main2, vault, fpath)
         curses.wrapper(main2_)
     except KeyboardInterrupt:
