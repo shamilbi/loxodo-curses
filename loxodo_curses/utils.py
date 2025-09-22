@@ -53,8 +53,7 @@ def chunkstring(s: str, chunk_len: int) -> Generator[str]:
     len_ = len(s)
     i = 0
     while True:
-        yield s[i : i + chunk_len]  # works even if s='' # noqa: E203
-        # E203 whitespace before ':'
+        yield s[i : i + chunk_len]  # works even if s=''
         i += chunk_len
         if not i < len_:
             break
