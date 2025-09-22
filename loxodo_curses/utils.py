@@ -5,6 +5,7 @@ import readline
 from datetime import datetime
 from functools import lru_cache
 from getpass import getpass
+from subprocess import PIPE, Popen
 from typing import Generator
 
 
@@ -61,7 +62,8 @@ def chunkstring(s: str, chunk_len: int) -> Generator[str]:
 
 def win_addstr(win: curses.window, row: int, col: int, s: str, attr: int = 0):
     try:
-        win.addstr(row, col, s, attr)
+        _, cols = win.getmaxyx()
+        win.addstr(row, col, s[: cols - col], attr)
     except curses.error:
         # https://docs.python.org/3/library/curses.html#curses.window.addstr
         # Attempting to write to the lower right corner of a window, subwindow, or pad
@@ -86,3 +88,8 @@ class RowString:
                 s += f'{v[:w]:<{w}} '
         s = s.rstrip()  # last item stripped
         return s
+
+
+def str2clipboard(s: str):
+    with Popen(['xsel', '-b', '-i'], stdout=PIPE, stdin=PIPE, stderr=PIPE, text=True) as p:
+        p.communicate(input=s)
