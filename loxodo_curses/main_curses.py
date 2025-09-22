@@ -1,18 +1,23 @@
 # from os import environ, system
 # from os.path import exists, expanduser, join
+import binascii
 import curses
 import curses.ascii
 import io
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 import webbrowser
+from contextlib import contextmanager
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
 from threading import Timer
 from typing import Callable
+
+import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
 from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard, win_addstr
@@ -160,7 +165,7 @@ SORT_UP = '\u2191'
 SORT_DOWN = '\u2193'
 
 
-class Main:  # pylint: disable=too-many-instance-attributes
+class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     def __init__(self, vault: Vault, fpath: str, screen):
         self.vault = vault
         self.vault_fpath = fpath
@@ -349,19 +354,46 @@ class Main:  # pylint: disable=too-many-instance-attributes
         else:
             self.status('Username is empty')
 
+    @contextmanager
+    def check_clipboard(self):
+        t = self.clear_thread
+        if t and t.is_alive():
+            t.cancel()
+        try:
+            yield
+        finally:
+            t = self.clear_thread = Timer(10, str2clipboard, args=[''])
+            t.start()
+
     def passwd2clipboard(self):
         if not (r := self.get_record(self.win.idx)):
             return
         if r.passwd:
-            t = self.clear_thread
-            if t and t.is_alive():
-                t.cancel()
-            str2clipboard(r.passwd)
-            t = self.clear_thread = Timer(10, str2clipboard, args=[''])
-            t.start()
+            with self.check_clipboard():
+                str2clipboard(r.passwd)
             self.status('Password copied to clipboard')
         else:
             self.status('Password is empty')
+
+    def totp2clipboard(self):
+        if not (r := self.get_record(self.win.idx)):
+            return
+        passwd2 = r.passwd.replace(' ', '')  # A B -> AB
+        m = re.match(r'([a-z0-9]+):', passwd2, flags=re.A + re.I)  # sha1:....
+        if m:
+            digest = m.group(1)
+            passwd2 = passwd2[len(digest) + 1 :]
+        else:
+            digest = 'sha1'
+        try:
+            totp = mintotp.totp(passwd2, digest=digest)
+            with self.check_clipboard():
+                str2clipboard(totp)
+            totp2 = ' '.join([totp[i : i + 3] for i in range(0, len(totp), 3)])  # 123 456 ...
+            self.status(f'TOTP({digest}): {totp2}')
+        except (RuntimeError, binascii.Error, ValueError):
+            # ValueError: totp: bad digest
+            self.status('TOTP error')
 
     def input_loop(self):  # pylint: disable=too-many-branches
         self.refresh_all()
@@ -402,6 +434,8 @@ class Main:  # pylint: disable=too-many-instance-attributes
                     self.user2clipboard()
                 elif char_ord == 16:  # ^P
                     self.passwd2clipboard()
+                elif char_ord == 20:  # ^T
+                    self.totp2clipboard()
                 else:
                     name = curses.keyname(char_ord).decode('utf-8')
                     self.status(f'{char_ord=}, {name=}')
