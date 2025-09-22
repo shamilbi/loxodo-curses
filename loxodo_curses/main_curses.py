@@ -4,14 +4,18 @@ import curses
 import curses.ascii
 import io
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
+import webbrowser
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
+from threading import Timer
 from typing import Callable
 
 from . import __version__
-from .utils import RowString, chunkstring, get_passwd, input_file, int2time, win_addstr
+from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard, win_addstr
 from .vault import Record, Vault
 
 
@@ -180,6 +184,8 @@ class Main:  # pylint: disable=too-many-instance-attributes
 
         self.create_windows()
 
+        self.clear_thread: Timer | None = None  # thread to clear clipboard
+
     def sort(self, sortby: str = 't') -> bool:
         if not sortby or sortby == self.sortedby:
             return False
@@ -218,14 +224,19 @@ class Main:  # pylint: disable=too-many-instance-attributes
         records ... | record |
             2/3        1/3
         '''
-        rows, cols = (curses.LINES - 2, curses.COLS)  # pylint: disable=no-member
+        maxy, maxx = (curses.LINES, curses.COLS)  # pylint: disable=no-member
+
+        rows, cols = (maxy - 4, maxx)
         cols2 = min(cols // 3, 35)
         cols1 = cols - cols2
 
         win = self.screen.derwin(rows, cols1, 2, 0)
-        self.win = Win(win, self.get_record, self.records_len, self.refresh_win_deps)
+        self.win = Win(win, self.get_record_str, self.records_len, self.refresh_win_deps)
 
         self.win2 = self.screen.derwin(rows, cols2, 2, cols1)
+
+        # status
+        self.win3 = self.screen.derwin(2, cols, maxy - 2, 0)
 
     def refresh_win_deps(self):
         rows, cols = self.win2.getmaxyx()
@@ -239,11 +250,15 @@ class Main:  # pylint: disable=too-many-instance-attributes
             record2win(r, win)
         self.win2.refresh()
 
-    def get_record(self, i):
+    def get_record(self, i: int) -> Record | None:
         len_ = len(self.records)
         if not i < len_:
             return None
-        r = self.records[i]
+        return self.records[i]
+
+    def get_record_str(self, i: int) -> str:
+        if not (r := self.get_record(i)):
+            return ''
         return self.row_string.value(r.title, r.user, int2time(r.last_mod), int2time(r.created), r.group)
 
     def records_len(self) -> int:
@@ -291,6 +306,10 @@ class Main:  # pylint: disable=too-many-instance-attributes
         self.win2.box()
         self.refresh_win_deps()
 
+        ch = curses.ACS_HLINE
+        self.win3.border(' ', ' ', ch, ' ', ch, ch, ' ', ' ')
+        self.win3.refresh()
+
     def run(self):
         self.input_loop()
 
@@ -303,6 +322,46 @@ class Main:  # pylint: disable=too-many-instance-attributes
             self.shutdown()
         if (ch2 := chr(ch)).lower() in SORT_KEYS:
             self.sort2(ch2)
+
+    def status(self, s: str):
+        win_addstr(self.win3, 1, 0, s)
+        self.win3.refresh()
+
+    def run_url(self):
+        if not (r := self.get_record(self.win.idx)):
+            return
+        if not r.url:
+            return
+        try:
+            if shutil.which("xdg-open"):
+                subprocess.run(['xdg-open', r.url], check=False)
+            else:
+                webbrowser.open(r.url)
+        except ImportError:
+            self.status(f'Could not load python module "webbrowser" for {r.url=}')
+
+    def user2clipboard(self):
+        if not (r := self.get_record(self.win.idx)):
+            return
+        if r.user:
+            str2clipboard(r.user)
+            self.status('Username copied to clipboard')
+        else:
+            self.status('Username is empty')
+
+    def passwd2clipboard(self):
+        if not (r := self.get_record(self.win.idx)):
+            return
+        if r.passwd:
+            t = self.clear_thread
+            if t and t.is_alive():
+                t.cancel()
+            str2clipboard(r.passwd)
+            t = self.clear_thread = Timer(10, str2clipboard, args=[''])
+            t.start()
+            self.status('Password copied to clipboard')
+        else:
+            self.status('Password is empty')
 
     def input_loop(self):  # pylint: disable=too-many-branches
         self.refresh_all()
@@ -337,11 +396,17 @@ class Main:  # pylint: disable=too-many-instance-attributes
                 elif char.upper() == 'H':  # Print help screen
                     self.print_help_screen()
                     self.refresh_all()
-            except curses.error as e:
-                curses.endwin()
-                print('[-] Invalid keypress detected.')
-                print(e)
-                input('Press Enter to continue ...')
+                elif char_ord == 12:  # ^L
+                    self.run_url()
+                elif char_ord == 21:  # ^U
+                    self.user2clipboard()
+                elif char_ord == 16:  # ^P
+                    self.passwd2clipboard()
+                else:
+                    name = curses.keyname(char_ord).decode('utf-8')
+                    self.status(f'{char_ord=}, {name=}')
+            except curses.error:
+                pass
 
     def shutdown(self):
         sys.exit(0)
@@ -380,6 +445,9 @@ class Main:  # pylint: disable=too-many-instance-attributes
             ("G, End", "Move to last item"),
             ("Alt_{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
             ("Alt_{T,U,M,C,G}", "Sort reversed"),
+            ("Ctrl_L", "Run URL"),
+            ("Ctrl_U", "Copy Username to clipboard"),
+            ("Ctrl_P", "Copy Password to clipboard"),
         ]
         win_text(self.screen, header, help_)
 
