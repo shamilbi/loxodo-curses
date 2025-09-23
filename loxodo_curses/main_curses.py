@@ -329,8 +329,11 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             self.sort2(ch2)
 
     def status(self, s: str):
-        win_addstr(self.win3, 1, 0, s)
-        self.win3.refresh()
+        _, cols = self.win3.getmaxyx()
+        win = self.win3.derwin(1, cols, 1, 0)
+        win.erase()
+        win_addstr(win, 0, 0, s)
+        win.refresh()
 
     def run_url(self):
         if not (r := self.get_record(self.win.idx)):
@@ -395,6 +398,15 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             # ValueError: totp: bad digest
             self.status('TOTP error')
 
+    def url2clipboard(self):
+        if not (r := self.get_record(self.win.idx)):
+            return
+        if r.url:
+            str2clipboard(r.url)
+            self.status('URL copied to clipboard')
+        else:
+            self.status('URL is empty')
+
     def input_loop(self):  # pylint: disable=too-many-branches
         self.refresh_all()
         while True:
@@ -404,7 +416,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
 
                 if char_ord == curses.ascii.ESC:  # Esc
                     self.handle_alt_key()
-                # elif char.upper() == 'Q' or char_ord == curses.ascii.ESC:  # Esc or Q
                 elif char.upper() == 'Q':
                     self.shutdown()
                 elif char.upper() == 'J' or char_ord == curses.KEY_DOWN:  # Down or J
@@ -425,11 +436,13 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 elif char == 'E':
                     self.launch_editor(passwd=True)  # not using curses
                     self.screen.refresh()
+                elif char == 'L':
+                    self.run_url()
                 elif char.upper() == 'H':  # Print help screen
                     self.print_help_screen()
                     self.refresh_all()
                 elif char_ord == 12:  # ^L
-                    self.run_url()
+                    self.url2clipboard()
                 elif char_ord == 21:  # ^U
                     self.user2clipboard()
                 elif char_ord == 16:  # ^P
@@ -469,8 +482,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         help_ = [
             ("h", "This help screen"),
             ("q, Esc", "Quit the program"),
-            ("e", "Edit current record w/o password"),
-            ("E", "Edit current record w/ password"),
             ("j, Down", "Move selection down"),
             ("k, Up", "Move selection up"),
             ("PgUp", "Page up"),
@@ -479,9 +490,12 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             ("G, End", "Move to last item"),
             ("Alt_{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
             ("Alt_{T,U,M,C,G}", "Sort reversed"),
-            ("Ctrl_L", "Run URL"),
+            ("e", "Edit current record w/o password"),
+            ("E", "Edit current record w/ password"),
+            ("L", "Launch URL"),
             ("Ctrl_U", "Copy Username to clipboard"),
             ("Ctrl_P", "Copy Password to clipboard"),
+            ("Ctrl_L", "Copy URL to clipboard"),
         ]
         win_text(self.screen, header, help_)
 
