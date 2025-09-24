@@ -12,6 +12,7 @@ import sys
 import tempfile
 import webbrowser
 from contextlib import contextmanager
+from curses.textpad import Textbox
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
 from threading import Timer
@@ -192,7 +193,8 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         self.clear_thread: Timer | None = None  # thread to clear clipboard
 
     def sort(self, sortby: str = 't') -> bool:
-        if not sortby or sortby == self.sortedby:
+        # if not sortby or sortby == self.sortedby:
+        if not sortby:
             return False
         if (key := sortby.lower()) not in SORT:
             return False
@@ -224,18 +226,25 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
 
     def create_windows(self):
         '''
+        Loxodo v...file...time...
+        Search: ...
         ... header ...
-
         records ... | record |
             2/3        1/3
+        ---------------------
+        status ...
         '''
         maxy, maxx = (curses.LINES, curses.COLS)  # pylint: disable=no-member
 
-        rows, cols = (maxy - 4, maxx)
+        rows, cols = (maxy - 5, maxx)
         cols2 = min(cols // 3, 35)
         cols1 = cols - cols2
 
-        win = self.screen.derwin(rows, cols1, 2, 0)
+        prompt = self.prompt_search = 'Search: '
+        len_ = len(prompt)
+        self.win_search = self.screen.derwin(1, cols1 - len_, 1, len_)
+
+        win = self.screen.derwin(rows, cols1, 3, 0)
         self.win = Win(win, self.get_record_str, self.records_len, self.refresh_win_deps)
 
         self.win2 = self.screen.derwin(rows, cols2, 2, cols1)
@@ -302,7 +311,11 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
         _, cols = self.win.win.getmaxyx()
         win_addstr(self.screen, 0, 0, s[:cols])
-        win_addstr(self.screen, 1, 0, self.create_header())
+
+        win_addstr(self.screen, 1, 0, self.prompt_search[:cols])
+        win_addstr(self.win_search, 0, 0, self._filterstring)
+
+        win_addstr(self.screen, 2, 0, self.create_header())
         self.screen.refresh()
 
         self.win.refresh()
@@ -334,6 +347,17 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         win.erase()
         win_addstr(win, 0, 0, s)
         win.refresh()
+
+    def search(self):
+        win_addstr(self.win_search, 0, 0, self._filterstring)
+        try:
+            curses.curs_set(1)
+            box = Textbox(self.win_search)
+            box.edit()
+            self._filterstring = box.gather().rstrip()
+        finally:
+            curses.curs_set(0)
+        self.sort2(self.sortedby)
 
     def run_url(self):
         if not (r := self.get_record(self.win.idx)):
@@ -433,6 +457,8 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 elif char == 'e':
                     self.launch_editor()  # not using curses
                     self.screen.refresh()
+                elif char == 's':
+                    self.search()
                 elif char == 'E':
                     self.launch_editor(passwd=True)  # not using curses
                     self.screen.refresh()
@@ -493,6 +519,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             ("e", "Edit current record w/o password"),
             ("E", "Edit current record w/ password"),
             ("L", "Launch URL"),
+            ("s", "Search records"),
             ("Ctrl_U", "Copy Username to clipboard"),
             ("Ctrl_P", "Copy Password to clipboard"),
             ("Ctrl_L", "Copy URL to clipboard"),
