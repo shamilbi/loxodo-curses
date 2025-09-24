@@ -1,4 +1,3 @@
-import curses
 import glob
 import os
 import readline
@@ -57,17 +56,6 @@ def chunkstring(s: str, chunk_len: int) -> Generator[str]:
         i += chunk_len
         if not i < len_:
             break
-
-
-def win_addstr(win: curses.window, row: int, col: int, s: str, attr: int = 0):
-    try:
-        _, cols = win.getmaxyx()
-        win.addstr(row, col, s[: cols - col], attr)
-    except curses.error:
-        # https://docs.python.org/3/library/curses.html#curses.window.addstr
-        # Attempting to write to the lower right corner of a window, subwindow, or pad
-        # will cause an exception to be raised after the string is printed.
-        pass
 
 
 class RowString:

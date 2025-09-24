@@ -11,139 +11,19 @@ import subprocess
 import sys
 import tempfile
 import webbrowser
+from collections.abc import Callable
 from contextlib import contextmanager
 from curses.textpad import Textbox
 from functools import partial
 from signal import SIGINT, SIGTERM, signal
 from threading import Timer
-from typing import Callable
 
 import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
-from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard, win_addstr
+from .curses_utils import List, win_addstr
+from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard
 from .vault import BadPasswordError, Record, Vault
-
-
-class Win:
-    def __init__(self, win, get_f, get_len_f, refresh_deps_f):
-        '''
-        s = self.get_f(idx)
-        len_ = self.get_len_f()
-        '''
-        self.win = win
-        self.get_f = get_f
-        self.get_len_f = get_len_f
-        self.refresh_deps_f = refresh_deps_f
-
-        self.win.keypad(1)
-
-        self.cur = 0  # cursor y
-        self.idx = 0  # source index
-        self.attr1 = curses.color_pair(1) | curses.A_BOLD
-
-    def refresh(self):
-        self.win.erase()
-        len_ = self.get_len_f()
-        if len_:
-            rows, cols = self.win.getmaxyx()
-            self.cur = min(self.cur, self.idx)
-            for i in range(rows):
-                idx = self.idx - self.cur + i
-                if not idx < len_:
-                    break
-                s = self.get_f(idx)[:cols]
-                if i == self.cur:
-                    win_addstr(self.win, i, 0, s, attr=self.attr1)
-                else:
-                    win_addstr(self.win, i, 0, s)
-            self.win.move(self.cur, 0)
-        self.win.refresh()
-        self.refresh_deps_f()
-
-    def scroll_top(self):
-        self.idx = self.cur = 0
-        self.refresh()
-
-    def scroll_bottom(self):
-        len_ = self.get_len_f()
-        if not len_:
-            return
-        rows, _ = self.win.getmaxyx()
-        self.cur = min(rows - 1, len_ - 1)
-        self.idx = len_ - 1
-        self.refresh()
-
-    def scroll_down(self):
-        len_ = self.get_len_f()
-        if not len_ or not self.idx + 1 < len_:
-            return
-        rows, cols = self.win.getmaxyx()
-        prev_s = self.get_f(self.idx)
-        next_s = self.get_f(self.idx + 1)
-        win_addstr(self.win, self.cur, 0, prev_s[:cols])
-        if self.cur + 1 < rows:
-            self.cur += 1
-        else:
-            self.win.move(0, 0)
-            self.win.deleteln()
-            self.cur = rows - 1
-        win_addstr(self.win, self.cur, 0, next_s[:cols], attr=self.attr1)
-        self.idx += 1
-        self.win.refresh()
-        self.refresh_deps_f()
-
-    def scroll_up(self):
-        len_ = self.get_len_f()
-        if not len_ or self.idx - 1 < 0:
-            return
-        _, cols = self.win.getmaxyx()
-        prev_s = self.get_f(self.idx)
-        next_s = self.get_f(self.idx - 1)
-        win_addstr(self.win, self.cur, 0, prev_s[:cols])
-        if self.cur > 0:
-            self.cur -= 1
-        else:
-            self.win.move(0, 0)
-            self.win.insdelln(1)
-        win_addstr(self.win, self.cur, 0, next_s[:cols], attr=self.attr1)
-        self.idx -= 1
-        self.win.refresh()
-        self.refresh_deps_f()
-
-    def scroll_page_down(self):
-        len_ = self.get_len_f()
-        if not len_:
-            return
-        rows, _ = self.win.getmaxyx()
-        idx = self.idx + rows
-        if idx < len_:
-            self.idx = idx
-            self.refresh()
-        else:
-            idx = len_ - 1
-            delta = idx - self.idx
-            if not delta:
-                self.scroll_bottom()
-            elif self.cur + delta < rows:
-                self.cur += delta
-                self.idx = idx
-                self.refresh()
-            else:
-                self.scroll_bottom()
-
-    def scroll_page_up(self):
-        len_ = self.get_len_f()
-        if not len_:
-            return
-        rows, _ = self.win.getmaxyx()
-        idx = self.idx - rows
-        if not idx < 0:
-            self.idx = idx
-            self.refresh()
-        else:
-            self.scroll_top()
-
 
 SORT: dict[str, Callable[[Record], tuple]] = {
     't': lambda r: (r.title.lower(), r.user.lower(), r.last_mod),
@@ -245,7 +125,13 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         self.win_search = self.screen.derwin(1, cols1 - len_, 1, len_)
 
         win = self.screen.derwin(rows, cols1, 3, 0)
-        self.win = Win(win, self.get_record_str, self.records_len, self.refresh_win_deps)
+        self.win = List(
+            win,
+            self.get_record_str,
+            self.records_len,
+            self.refresh_win_deps,
+            current_color=curses.color_pair(1) | curses.A_BOLD,
+        )
 
         self.win2 = self.screen.derwin(rows, cols2, 2, cols1)
 
