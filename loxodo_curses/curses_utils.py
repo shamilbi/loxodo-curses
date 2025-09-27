@@ -44,6 +44,8 @@ class List:
         len_ = self.len_recs()
         if len_:
             rows, cols = self.win.getmaxyx()
+            if not self.idx < len_:  # deleted
+                self.idx = len_ - 1
             self.cur = min(self.cur, self.idx)
             for i in range(rows):
                 idx = self.idx - self.cur + i
