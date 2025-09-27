@@ -10,7 +10,12 @@ from typing import Generator
 
 @lru_cache(maxsize=1)
 def _glob_text(text: str):
-    return glob.glob(os.path.expanduser(text) + '*')
+    l = glob.glob(os.path.expanduser(text) + '*')
+    # dir -> dir/
+    for i, s in enumerate(l):
+        if s and os.path.isdir(s) and not s.endswith('/'):
+            l[i] = s + '/'
+    return l
 
 
 def _complete(text: str, state: int):
