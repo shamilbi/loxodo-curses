@@ -62,7 +62,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
 
         self._filterstring = ''
-        self.sortedby = '_'  # not defined
         self.sort()
 
         # title, user, last_mod, created, group
@@ -73,7 +72,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         self.clear_thread: Timer | None = None  # thread to clear clipboard
 
     def sort(self, sortby: str = 't') -> bool:
-        # if not sortby or sortby == self.sortedby:
         if not sortby:
             return False
         if (key := sortby.lower()) not in SORT:
@@ -191,7 +189,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         return self.row_string.value(*headers)
 
     def refresh_all(self):
-        self.screen.clear()
+        self.screen.erase()
 
         header = self.vault.header
         s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
@@ -202,7 +200,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         win_addstr(self.win_search, 0, 0, self._filterstring)
 
         win_addstr(self.screen, 2, 0, self.create_header())
-        self.screen.refresh()
+        # self.screen.refresh()
 
         self.win.refresh()
 
@@ -212,16 +210,21 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
 
         ch = curses.ACS_HLINE
         self.win3.border(' ', ' ', ch, ' ', ch, ch, ' ', ' ')
-        self.win3.refresh()
+        # self.win3.refresh()
+
+        self.screen.refresh()
 
     def run(self):
         self.input_loop()
 
     def handle_alt_key(self):
         # https://stackoverflow.com/a/22362849
-        self.screen.nodelay(True)
-        ch = self.screen.getch()  # get the key pressed after ALT
-        self.screen.nodelay(False)
+        ch = -1
+        try:
+            self.screen.nodelay(True)
+            ch = self.screen.getch()  # get the key pressed after ALT
+        finally:
+            self.screen.nodelay(False)
         if ch == -1:
             self.shutdown()
         if (ch2 := chr(ch)).lower() in SORT_KEYS:
@@ -317,15 +320,24 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         else:
             self.status('URL is empty')
 
-    def input_loop(self):  # pylint: disable=too-many-branches
+    def input_loop(self):  # pylint: disable=too-many-branches,too-many-statements
         self.refresh_all()
         while True:
             try:
                 char_ord = self.screen.getch()
+                if char_ord == -1:
+                    # SIGWINCH interrupt
+                    # t = self.screen.getmaxyx()  # doesn't work
+                    self.status('SIGWINCH interrupt')
+                    continue
                 char = chr(char_ord)
 
                 if char_ord == curses.ascii.ESC:  # Esc
                     self.handle_alt_key()
+                elif char_ord == curses.KEY_RESIZE:
+                    # doesn't work
+                    # t = self.screen.getmaxyx()
+                    pass
                 elif char.upper() == 'Q':
                     self.shutdown()
                 elif char.upper() == 'J' or char_ord == curses.KEY_DOWN:  # Down or J
@@ -367,7 +379,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             except curses.error:
                 pass
 
-    def shutdown(self):
+    def shutdown(self, *_):
         sys.exit(0)
 
     def launch_editor(self, passwd=False):
@@ -520,10 +532,10 @@ def main():
             except BadPasswordError:
                 print('bad password!')
                 continue
-        main2_ = partial(main2, vault, fpath)
-        curses.wrapper(main2_)
     except KeyboardInterrupt:
-        pass
+        return
+    main2_ = partial(main2, vault, fpath)
+    curses.wrapper(main2_)
 
 
 if __name__ == '__main__':
