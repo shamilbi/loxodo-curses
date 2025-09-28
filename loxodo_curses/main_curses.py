@@ -349,6 +349,8 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                     # doesn't work
                     # t = self.screen.getmaxyx()
                     pass
+                elif char_ord == curses.KEY_DC:  # delete
+                    self.del_record(self.win.idx)
                 elif char.upper() == 'Q':
                     self.shutdown()
                 elif char.upper() == 'J' or char_ord == curses.KEY_DOWN:  # Down or J
@@ -371,8 +373,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 elif char == 'E':
                     self.launch_editor(passwd=True)  # not using curses
                     self.screen.refresh()
-                elif char == 'D':
-                    self.del_record(self.win.idx)
                 elif char == 'L':
                     self.run_url()
                 elif char.upper() == 'H':  # Print help screen
@@ -427,9 +427,9 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             ("G, End", "Move to last item"),
             ("Alt_{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
             ("Alt_{T,U,M,C,G}", "Sort reversed"),
+            ("Delete", "Delete current record"),
             ("e", "Edit current record w/o password"),
             ("E", "Edit current record w/ password"),
-            ("D", "Delete current record"),
             ("L", "Launch URL"),
             ("s", "Search records"),
             ("Ctrl_U", "Copy Username to clipboard"),
