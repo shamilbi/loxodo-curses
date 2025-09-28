@@ -500,15 +500,14 @@ def win_text(screen, header: str, help_: list[tuple[str, str]]):  # pylint: disa
 
     win = win_center(screen, rows2, cols2, header)
     rows2, cols2 = win.getmaxyx()
-    cols = cols2 - 2
 
     row = 0
     col = 1
     for s in iter_help():
         row += 1
-        win_addstr(win, row, col, s[:cols])
+        win_addstr(win, row, col, s, border=1)
     row += 1
-    win_addstr(win, row, col, footer[:cols])
+    win_addstr(win, row, col, footer, border=1)
 
     # Wait for any key press
     win.getch()
