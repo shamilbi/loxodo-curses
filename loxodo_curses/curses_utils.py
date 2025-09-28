@@ -2,10 +2,19 @@ import curses
 from collections.abc import Callable
 
 
-def win_addstr(win: curses.window, row: int, col: int, s: str, attr: int = 0):
+def win_addstr(
+    win: curses.window, row: int, col: int, s: str, attr: int = 0, border: int = 0, align: int = -1
+):  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    'align: -1 (left), 0(center), 1(right)'
     try:
         _, cols = win.getmaxyx()
-        win.addstr(row, col, s[: cols - col], attr)
+        cols2 = cols - col - border
+        s = s[:cols2]
+        if align == 0:
+            s = f'{s:^{cols2}}'
+        elif align > 0:
+            s = f'{s:>{cols2}}'
+        win.addstr(row, col, s, attr)
     except curses.error:
         # https://docs.python.org/3/library/curses.html#curses.window.addstr
         # Attempting to write to the lower right corner of a window, subwindow, or pad
