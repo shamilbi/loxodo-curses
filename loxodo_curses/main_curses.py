@@ -21,9 +21,30 @@ from threading import Timer
 import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
-from .curses_utils import List, ask_delete, win_addstr, win_center
+from .curses_utils import List, ask_delete, win_addstr, win_help
 from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard
 from .vault import BadPasswordError, Record, Vault
+
+HELP = [
+    ("h", "This help screen"),
+    ("q, Esc", "Quit the program"),
+    ("j, Down", "Move selection down"),
+    ("k, Up", "Move selection up"),
+    ("PgUp", "Page up"),
+    ("PgDown", "Page down"),
+    ("g, Home", "Move to first item"),
+    ("G, End", "Move to last item"),
+    ("Alt_{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
+    ("Alt_{T,U,M,C,G}", "Sort reversed"),
+    ("Delete", "Delete current record"),
+    ("e", "Edit current record w/o password"),
+    ("E", "Edit current record w/ password"),
+    ("L", "Launch URL"),
+    ("s", "Search records"),
+    ("Ctrl_U", "Copy Username to clipboard"),
+    ("Ctrl_P", "Copy Password to clipboard"),
+    ("Ctrl_L", "Copy URL to clipboard"),
+]
 
 SORT: dict[str, Callable[[Record], tuple]] = {
     't': lambda r: (r.title.lower(), r.user.lower(), r.last_mod),
@@ -376,7 +397,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 elif char == 'L':
                     self.run_url()
                 elif char.upper() == 'H':  # Print help screen
-                    self.print_help_screen()
+                    win_help(self.screen, HELP)
                     self.refresh_all()
                 elif char_ord == 12:  # ^L
                     self.url2clipboard()
@@ -413,30 +434,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             if fd:
                 os.close(fd)
                 os.remove(fpath)
-
-    def print_help_screen(self):
-        header = "Help information:"
-        help_ = [
-            ("h", "This help screen"),
-            ("q, Esc", "Quit the program"),
-            ("j, Down", "Move selection down"),
-            ("k, Up", "Move selection up"),
-            ("PgUp", "Page up"),
-            ("PgDown", "Page down"),
-            ("g, Home", "Move to first item"),
-            ("G, End", "Move to last item"),
-            ("Alt_{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
-            ("Alt_{T,U,M,C,G}", "Sort reversed"),
-            ("Delete", "Delete current record"),
-            ("e", "Edit current record w/o password"),
-            ("E", "Edit current record w/ password"),
-            ("L", "Launch URL"),
-            ("s", "Search records"),
-            ("Ctrl_U", "Copy Username to clipboard"),
-            ("Ctrl_P", "Copy Password to clipboard"),
-            ("Ctrl_L", "Copy URL to clipboard"),
-        ]
-        win_text(self.screen, header, help_)
 
 
 def notes2str(r: Record) -> str:
@@ -475,47 +472,6 @@ def record2win(r: Record, win):
 def record2file(r: Record, fpath: str, passwd=False):
     with open(fpath, 'w', encoding='utf-8') as fp:
         fp.write(record2str(r, passwd=passwd))
-
-
-def win_text(screen, header: str, help_: list[tuple[str, str]]):  # pylint: disable=too-many-locals
-    '''
-    help_ = [
-        (key1, help1),
-        (key2, help2),
-        ...
-    ]
-    '''
-    footer = "Press any key to continue..."
-
-    lmax = max(len(i[0]) for i in help_)  # (lmax) - help
-
-    def iter_help():
-        for i, j in help_:
-            yield f'{i:<{lmax}} - {j}'  # keys - help
-
-    rows = len(help_) + 1  # footer=1
-    rows2 = rows + 2  # border=2
-    cols = max(len(header), max(len(i) for i in iter_help()), len(footer))
-    cols2 = cols + 2  # border=2
-
-    win = win_center(screen, rows2, cols2, header)
-    rows2, cols2 = win.getmaxyx()
-
-    row = 0
-    col = 1
-    for s in iter_help():
-        row += 1
-        win_addstr(win, row, col, s, border=1)
-    row += 1
-    win_addstr(win, row, col, footer, border=1)
-
-    # Wait for any key press
-    win.getch()
-
-    # https://stackoverflow.com/questions/2575409/how-do-i-delete-a-curse-window-in-python-and-restore-background-window
-    win.erase()
-    del win
-    screen.touchwin()
 
 
 def main2(vault: Vault, fpath: str, passwd: bytes, screen):
