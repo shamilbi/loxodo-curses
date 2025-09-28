@@ -64,6 +64,48 @@ def ask_delete(screen: curses.window, color: int = 0) -> bool:
         screen.touchwin()
 
 
+def win_help(screen, help_: list[tuple[str, str]]):  # pylint: disable=too-many-locals
+    '''
+    help_ = [
+        (key1, help1),
+        (key2, help2),
+        ...
+    ]
+    '''
+    header = "Help information:"
+    footer = "Press any key to continue..."
+
+    lmax = max(len(i[0]) for i in help_)  # (lmax) - help
+
+    def iter_help():
+        for i, j in help_:
+            yield f'{i:<{lmax}} - {j}'  # keys - help
+
+    rows = len(help_) + 1  # footer=1
+    rows2 = rows + 2  # border=2
+    cols = max(len(header), max(len(i) for i in iter_help()), len(footer))
+    cols2 = cols + 2  # border=2
+
+    win = win_center(screen, rows2, cols2, header)
+    rows2, cols2 = win.getmaxyx()
+
+    row = 0
+    col = 1
+    for s in iter_help():
+        row += 1
+        win_addstr(win, row, col, s, border=1)
+    row += 1
+    win_addstr(win, row, col, footer, border=1)
+
+    # Wait for any key press
+    win.getch()
+
+    # https://stackoverflow.com/questions/2575409/how-do-i-delete-a-curse-window-in-python-and-restore-background-window
+    win.erase()
+    del win
+    screen.touchwin()
+
+
 class List:
     '''
     A projection of an array of records r0...rX to a window lines of string s0...sY
