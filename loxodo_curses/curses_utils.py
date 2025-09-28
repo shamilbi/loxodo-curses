@@ -22,6 +22,48 @@ def win_addstr(
         pass
 
 
+def win_center(screen: curses.window, rows: int, cols: int, header: str, color: int = 0) -> curses.window:
+    max_rows, max_cols = screen.getmaxyx()
+    rows = min(rows, max_rows)
+    cols = min(cols, max_cols)
+    y = (max_rows - rows) // 2
+    x = (max_cols - cols) // 2
+
+    win = screen.derwin(rows, cols, y, x)
+    win.keypad(True)
+    win.erase()
+    if color:
+        win.attrset(color)
+    win.box()
+
+    header = header[:cols]
+    x = (cols - len(header)) // 2
+    win_addstr(win, 0, x, header)
+
+    return win
+
+
+def ask_delete(screen: curses.window, color: int = 0) -> bool:
+    header = 'Delete current record'
+    win = win_center(screen, 5, 30, header, color=color)
+
+    win_addstr(win, 1, 1, 'Are you sure?', border=1, align=0)
+    win_addstr(win, 3, 1, 'Press Y to delete ...', border=1, align=0)
+
+    try:
+        ch = win.getch()
+        if ch == ord('Y'):
+            return True
+        return False
+    except curses.error:
+        return False
+    finally:
+        # https://stackoverflow.com/questions/2575409/how-do-i-delete-a-curse-window-in-python-and-restore-background-window
+        win.erase()
+        del win
+        screen.touchwin()
+
+
 class List:
     '''
     A projection of an array of records r0...rX to a window lines of string s0...sY
