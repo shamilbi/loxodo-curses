@@ -21,7 +21,7 @@ from threading import Timer
 import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
-from .curses_utils import List, win_addstr
+from .curses_utils import List, ask_delete, win_addstr, win_center
 from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard
 from .vault import BadPasswordError, Record, Vault
 
@@ -47,9 +47,10 @@ SORT_DOWN = '\u2193'
 
 
 class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
-    def __init__(self, vault: Vault, fpath: str, screen):
+    def __init__(self, vault: Vault, fpath: str, passwd: bytes, screen):
         self.vault = vault
         self.vault_fpath = fpath
+        self.vault_passwd = passwd
         self.screen = screen
 
         signal(SIGINT, self.shutdown)  # type: ignore[arg-type]
@@ -60,6 +61,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         curses.noecho()
         curses.start_color()
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
+        curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
 
         self._filterstring = ''
         self.sort()
@@ -147,6 +149,15 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             r = self.records[idx]
             record2win(r, win)
         self.win2.refresh()
+
+    def del_record(self, i: int):
+        if not (r := self.get_record(i)):
+            return
+        if ask_delete(self.screen, color=curses.color_pair(2)):
+            del self.records[i]
+            self.vault.records.remove(r)
+            self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+        self.win.refresh()
 
     def get_record(self, i: int) -> Record | None:
         len_ = len(self.records)
@@ -360,6 +371,8 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 elif char == 'E':
                     self.launch_editor(passwd=True)  # not using curses
                     self.screen.refresh()
+                elif char == 'D':
+                    self.del_record(self.win.idx)
                 elif char == 'L':
                     self.run_url()
                 elif char.upper() == 'H':  # Print help screen
@@ -416,6 +429,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             ("Alt_{T,U,M,C,G}", "Sort reversed"),
             ("e", "Edit current record w/o password"),
             ("E", "Edit current record w/ password"),
+            ("D", "Delete current record"),
             ("L", "Launch URL"),
             ("s", "Search records"),
             ("Ctrl_U", "Copy Username to clipboard"),
@@ -484,22 +498,11 @@ def win_text(screen, header: str, help_: list[tuple[str, str]]):  # pylint: disa
     cols = max(len(header), max(len(i) for i in iter_help()), len(footer))
     cols2 = cols + 2  # border=2
 
-    max_rows, max_cols = screen.getmaxyx()
-    rows2 = min(rows2, max_rows)
-    cols2 = min(cols2, max_cols)
+    win = win_center(screen, rows2, cols2, header)
+    rows2, cols2 = win.getmaxyx()
     cols = cols2 - 2
-    header = header[:cols2]
-    y = (max_rows - rows2) // 2
-    x = (max_cols - cols2) // 2
-
-    win = screen.derwin(rows2, cols2, y, x)
-    win.keypad(1)
-    win.erase()
-    win.box()
 
     row = 0
-    x = (cols2 - len(header)) // 2
-    win_addstr(win, row, x, header[: cols2 - x])
     col = 1
     for s in iter_help():
         row += 1
@@ -516,8 +519,8 @@ def win_text(screen, header: str, help_: list[tuple[str, str]]):  # pylint: disa
     screen.touchwin()
 
 
-def main2(vault: Vault, fpath: str, screen):
-    app = Main(vault, fpath, screen)
+def main2(vault: Vault, fpath: str, passwd: bytes, screen):
+    app = Main(vault, fpath, passwd, screen)
     app.run()
 
 
@@ -526,15 +529,15 @@ def main():
         fpath = input_file('Pwsafe file: ')
         while True:
             try:
-                passwd = get_passwd('Password: ')
-                vault = Vault(passwd.encode('latin1', 'replace'), fpath)
+                passwd: bytes = get_passwd('Password: ').encode('latin1', 'replace')
+                vault = Vault(passwd, fpath)
                 break
             except BadPasswordError:
                 print('bad password!')
                 continue
     except KeyboardInterrupt:
         return
-    main2_ = partial(main2, vault, fpath)
+    main2_ = partial(main2, vault, fpath, passwd)
     curses.wrapper(main2_)
 
 
