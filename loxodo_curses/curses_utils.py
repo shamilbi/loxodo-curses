@@ -94,7 +94,7 @@ class List:
         self.win.erase()
         len_ = self.len_recs()
         if len_:
-            rows, cols = self.win.getmaxyx()
+            rows, _ = self.win.getmaxyx()
             if not self.idx < len_:  # deleted
                 self.idx = len_ - 1
             self.cur = min(self.cur, self.idx)
@@ -102,7 +102,7 @@ class List:
                 idx = self.idx - self.cur + i
                 if not idx < len_:
                     break
-                s = self.get_rec(idx)[:cols]
+                s = self.get_rec(idx)
                 if i == self.cur:
                     win_addstr(self.win, i, 0, s, attr=self.current_color)
                 else:
@@ -128,17 +128,17 @@ class List:
         len_ = self.len_recs()
         if not len_ or not self.idx + 1 < len_:
             return
-        rows, cols = self.win.getmaxyx()
+        rows, _ = self.win.getmaxyx()
         prev_s = self.get_rec(self.idx)
         next_s = self.get_rec(self.idx + 1)
-        win_addstr(self.win, self.cur, 0, prev_s[:cols])
+        win_addstr(self.win, self.cur, 0, prev_s)
         if self.cur + 1 < rows:
             self.cur += 1
         else:
             self.win.move(0, 0)
             self.win.deleteln()
             self.cur = rows - 1
-        win_addstr(self.win, self.cur, 0, next_s[:cols], attr=self.current_color)
+        win_addstr(self.win, self.cur, 0, next_s, attr=self.current_color)
         self.idx += 1
         self.win.refresh()
         self.refresh_deps()
@@ -147,16 +147,15 @@ class List:
         len_ = self.len_recs()
         if not len_ or self.idx - 1 < 0:
             return
-        _, cols = self.win.getmaxyx()
         prev_s = self.get_rec(self.idx)
         next_s = self.get_rec(self.idx - 1)
-        win_addstr(self.win, self.cur, 0, prev_s[:cols])
+        win_addstr(self.win, self.cur, 0, prev_s)
         if self.cur > 0:
             self.cur -= 1
         else:
             self.win.move(0, 0)
             self.win.insdelln(1)
-        win_addstr(self.win, self.cur, 0, next_s[:cols], attr=self.current_color)
+        win_addstr(self.win, self.cur, 0, next_s, attr=self.current_color)
         self.idx -= 1
         self.win.refresh()
         self.refresh_deps()
