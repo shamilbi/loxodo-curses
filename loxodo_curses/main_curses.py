@@ -3,7 +3,6 @@
 import binascii
 import curses
 import curses.ascii
-import io
 import os
 import re
 import shutil
@@ -24,6 +23,7 @@ from . import __version__
 from .curses_utils import List, ask_delete, win_addstr, win_help
 from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard
 from .vault import BadPasswordError, Record, Vault
+from .vault_utils import file2record, record2file, record2str
 
 HELP = [
     ("h", "This help screen"),
@@ -387,12 +387,12 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 elif char_ord == curses.KEY_PPAGE:  # Page up
                     self.win.scroll_page_up()
                 elif char == 'e':
-                    self.launch_editor()  # not using curses
+                    self.edit_record(self.win.idx)  # not using curses
                     self.screen.refresh()
                 elif char == 's':
                     self.search()
                 elif char == 'E':
-                    self.launch_editor(passwd=True)  # not using curses
+                    self.edit_record(self.win.idx, passwd=True)  # not using curses
                     self.screen.refresh()
                 elif char == 'L':
                     self.run_url()
@@ -416,46 +416,26 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
     def shutdown(self, *_):
         sys.exit(0)
 
-    def launch_editor(self, passwd=False):
-        idx = self.win.idx
-        if not idx < len(self.records):
+    def edit_record(self, i: int, passwd=False):
+        if not (r := self.get_record(i)):
             return
-        r = self.records[idx]
         curses.endwin()
         fd = None
         fpath = ''
         try:
             fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
-            # t1 = os.path.getmtime(fpath)
             record2file(r, fpath, passwd=passwd)
+            t1 = os.path.getmtime(fpath)
             os.system(f'vim "{fpath}"')
-            # t2 = os.path.getmtime(fpath)
+            t2 = os.path.getmtime(fpath)
+            if t1 != t2:
+                file2record(fpath, r)
+                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
         finally:
             if fd:
                 os.close(fd)
                 os.remove(fpath)
-
-
-def notes2str(r: Record) -> str:
-    s = ''
-    if r.notes:
-        s = r.notes.rstrip().replace('\r\n', '\n')
-        s = s.replace('\t', ' ' * 4)
-    return s
-
-
-def record2str(r: Record, passwd=False) -> str:
-    with io.StringIO() as fp:
-        fp.write(f'Title:\n{r.title}\n\n')
-        fp.write(f'Group:\n{r.group}\n\n')
-        fp.write(f'Username:\n{r.user}\n\n')
-        if passwd:
-            fp.write(f'Password:\n{r.passwd}\n\n')
-        fp.write(f'URL:\n{r.url}\n\n')
-        fp.write('Notes:\n')
-        if s := notes2str(r):
-            fp.write(f'{s}\n')
-        return fp.getvalue()
+        self.win.refresh()
 
 
 def record2win(r: Record, win):
@@ -467,11 +447,6 @@ def record2win(r: Record, win):
             if not row < rows:
                 return
             win_addstr(win, row, 0, s)
-
-
-def record2file(r: Record, fpath: str, passwd=False):
-    with open(fpath, 'w', encoding='utf-8') as fp:
-        fp.write(record2str(r, passwd=passwd))
 
 
 def main2(vault: Vault, fpath: str, passwd: bytes, screen):
