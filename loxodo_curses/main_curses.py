@@ -22,7 +22,7 @@ import mintotp  # type: ignore[import-untyped]
 from . import __version__
 from .curses_utils import List, ask_delete, win_addstr, win_help
 from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard
-from .vault import BadPasswordError, Record, Vault
+from .vault import BadPasswordError, Record, Vault, duplicate_record
 from .vault_utils import file2record, record2file, record2str
 
 HELP = [
@@ -37,6 +37,7 @@ HELP = [
     ("Alt_{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
     ("Alt_{T,U,M,C,G}", "Sort reversed"),
     ("Delete", "Delete current record"),
+    ("d", "Duplicate current record"),
     ("e", "Edit current record w/o password"),
     ("E", "Edit current record w/ password"),
     ("L", "Launch URL"),
@@ -388,12 +389,14 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                     self.win.scroll_page_up()
                 elif char == 'e':
                     self.edit_record(self.win.idx)  # not using curses
-                    self.screen.refresh()
+                elif char == 'd':
+                    self.duplicate_record(self.win.idx)  # not using curses
+                    # self.screen.refresh()
                 elif char == 's':
                     self.search()
                 elif char == 'E':
                     self.edit_record(self.win.idx, passwd=True)  # not using curses
-                    self.screen.refresh()
+                    # self.screen.refresh()
                 elif char == 'L':
                     self.run_url()
                 elif char.upper() == 'H':  # Print help screen
@@ -431,6 +434,30 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             if t1 != t2:
                 file2record(fpath, r)
                 self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+        finally:
+            if fd:
+                os.close(fd)
+                os.remove(fpath)
+        self.win.refresh()
+
+    def duplicate_record(self, i: int):
+        if not (r := self.get_record(i)):
+            return
+        r2 = duplicate_record(r)
+        curses.endwin()
+        fd = None
+        fpath = ''
+        try:
+            fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
+            record2file(r2, fpath, passwd=True)
+            t1 = os.path.getmtime(fpath)
+            os.system(f'vim "{fpath}"')
+            t2 = os.path.getmtime(fpath)
+            if t1 != t2:
+                file2record(fpath, r2)
+                self.vault.records.append(r2)
+                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+                self.records.insert(i, r2)
         finally:
             if fd:
                 os.close(fd)
