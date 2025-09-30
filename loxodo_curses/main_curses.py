@@ -371,6 +371,8 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                     pass
                 elif char_ord == curses.KEY_DC:  # delete
                     self.del_record(self.win.idx)
+                elif char_ord == curses.KEY_IC:  # insert
+                    self.insert_record(self.win.idx)
                 elif char.upper() == 'Q':
                     self.shutdown()
                 elif char.upper() == 'J' or char_ord == curses.KEY_DOWN:  # Down or J
@@ -434,6 +436,15 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             self.vault.records.append(r2)
             self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
             self.records.insert(i, r2)
+        self.win.refresh()
+
+    def insert_record(self, i: int):
+        r = Record.create()
+        curses.endwin()
+        if edit_record(r, passwd=True):
+            self.vault.records.append(r)
+            self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+            self.records.insert(i, r)
         self.win.refresh()
 
 
