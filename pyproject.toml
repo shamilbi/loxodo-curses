@@ -2,8 +2,8 @@
 name = 'loxodo-curses'
 description = 'A Password Safe V3 compatible password vault'
 authors = [
-    {name = "Christoph Sommer", email = "mail@christoph-sommer.de"},
     {name = "Shamil Bikineyev", email = "shamilbi@gmail.com"},
+    {name = "Christoph Sommer", email = "mail@christoph-sommer.de"},
 ]
 readme = {file = "README.rst", content-type = "text/x-rst"}
 urls.homepage = 'https://github.com/shamilbi/loxodo-curses'
