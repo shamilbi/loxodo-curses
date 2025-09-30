@@ -1,4 +1,6 @@
 import io
+import os
+import tempfile
 
 from .vault import Record
 
@@ -78,3 +80,22 @@ def stream2dict(fp, passwd=False) -> dict:
 def record2file(r: Record, fpath: str, passwd=False):
     with open(fpath, 'w', encoding='utf-8') as fp:
         record2stream(fp, r, passwd=passwd)
+
+
+def edit_record(r: Record, passwd: bool = False) -> bool:
+    fd = None
+    fpath = ''
+    try:
+        fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
+        record2file(r, fpath, passwd=passwd)
+        t1 = os.path.getmtime(fpath)
+        os.system(f'vim "{fpath}"')
+        t2 = os.path.getmtime(fpath)
+        if t1 != t2:
+            file2record(fpath, r)  # r changed
+            return True
+    finally:
+        if fd:
+            os.close(fd)
+            os.remove(fpath)
+    return False
