@@ -3,6 +3,7 @@
 import binascii
 import curses
 import curses.ascii
+import os
 import re
 import shutil
 import subprocess
@@ -12,7 +13,7 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from curses.textpad import Textbox
 from functools import partial
-from signal import SIGINT, SIGTERM, signal
+from signal import SIGINT, SIGTERM, SIGWINCH, signal
 from threading import Timer
 
 import mintotp  # type: ignore[import-untyped]
@@ -77,6 +78,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
 
         signal(SIGINT, self.shutdown)  # type: ignore[arg-type]
         signal(SIGTERM, self.shutdown)  # type: ignore[arg-type]
+        signal(SIGWINCH, self.sigwinch_handler)
 
         self.screen.keypad(1)
         curses.curs_set(0)
@@ -84,6 +86,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         curses.start_color()
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
+        self.screen_size = (curses.LINES, curses.COLS)  # pylint: disable=no-member
 
         self._filterstring = ''
         self.sort()
@@ -94,6 +97,12 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         self.create_windows()
 
         self.clear_thread: Timer | None = None  # thread to clear clipboard
+
+    def sigwinch_handler(self, *_):
+        maxx, maxy = os.get_terminal_size()
+        self.screen_size = (maxy, maxx)
+        self.create_windows()
+        self.refresh_all()
 
     def sort(self, sortby: str = 't') -> bool:
         if not sortby:
@@ -136,7 +145,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         ---------------------
         status ...
         '''
-        maxy, maxx = (curses.LINES, curses.COLS)  # pylint: disable=no-member
+        maxy, maxx = self.screen_size
 
         rows, cols = (maxy - 5, maxx)
         cols2 = min(cols // 3, 35)
@@ -362,7 +371,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 if char_ord == -1:
                     # SIGWINCH interrupt
                     # t = self.screen.getmaxyx()  # doesn't work
-                    self.status('SIGWINCH interrupt')
+                    # self.status('SIGWINCH interrupt')
                     continue
                 char = chr(char_ord)
 
