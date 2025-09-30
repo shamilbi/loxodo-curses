@@ -41,6 +41,7 @@ HELP = [
     ("E", "Edit current record w/ password"),
     ("L", "Launch URL"),
     ("s", "Search records"),
+    ("S", "New search"),
     ("Ctrl-U", "Copy Username to clipboard"),
     ("Ctrl-P", "Copy Password to clipboard"),
     ("Ctrl-L", "Copy URL to clipboard"),
@@ -270,6 +271,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         win.refresh()
 
     def search(self):
+        self.win_search.erase()
         win_addstr(self.win_search, 0, 0, self._filterstring)
         try:
             curses.curs_set(1)
@@ -394,6 +396,9 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                     self.duplicate_record(self.win.idx)  # not using curses
                     # self.screen.refresh()
                 elif char == 's':
+                    self.search()
+                elif char == 'S':
+                    self._filterstring = ''
                     self.search()
                 elif char == 'E':
                     self.edit_record(self.win.idx, passwd=True)  # not using curses
