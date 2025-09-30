@@ -30,8 +30,8 @@ def record2stream(fp, r: Record, passwd=False):
     fp.write(f'{notes2str(r)}\n')
 
 
-def file2record(fpath: str, r: Record):
-    d = file2dict(fpath)
+def file2record(fpath: str, r: Record, passwd=False):
+    d = file2dict(fpath, passwd=passwd)
     r.title = d['title']
     r.group = d['group']
     r.user = d['user']
@@ -41,9 +41,9 @@ def file2record(fpath: str, r: Record):
     r.notes = d['notes']
 
 
-def file2dict(fpath: str) -> dict:
+def file2dict(fpath: str, passwd=False) -> dict:
     with open(fpath, 'r', encoding='utf-8') as fp:
-        return stream2dict(fp)
+        return stream2dict(fp, passwd=passwd)
 
 
 def stream2dict(fp, passwd=False) -> dict:
@@ -92,7 +92,7 @@ def edit_record(r: Record, passwd: bool = False) -> bool:
         os.system(f'vim "{fpath}"')
         t2 = os.path.getmtime(fpath)
         if t1 != t2:
-            file2record(fpath, r)  # r changed
+            file2record(fpath, r, passwd=passwd)  # r changed
             return True
     finally:
         if fd:
