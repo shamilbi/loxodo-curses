@@ -3,12 +3,10 @@
 import binascii
 import curses
 import curses.ascii
-import os
 import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import webbrowser
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -23,7 +21,7 @@ from . import __version__
 from .curses_utils import List, ask_delete, win_addstr, win_help
 from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard
 from .vault import BadPasswordError, Record, Vault, duplicate_record
-from .vault_utils import file2record, record2file, record2str
+from .vault_utils import edit_record, record2str
 
 HELP = [
     ("h", "This help screen"),
@@ -423,45 +421,19 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         if not (r := self.get_record(i)):
             return
         curses.endwin()
-        fd = None
-        fpath = ''
-        try:
-            fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
-            record2file(r, fpath, passwd=passwd)
-            t1 = os.path.getmtime(fpath)
-            os.system(f'vim "{fpath}"')
-            t2 = os.path.getmtime(fpath)
-            if t1 != t2:
-                file2record(fpath, r)
-                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
-        finally:
-            if fd:
-                os.close(fd)
-                os.remove(fpath)
+        if edit_record(r, passwd=passwd):
+            self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
         self.win.refresh()
 
     def duplicate_record(self, i: int):
         if not (r := self.get_record(i)):
             return
-        r2 = duplicate_record(r)
         curses.endwin()
-        fd = None
-        fpath = ''
-        try:
-            fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
-            record2file(r2, fpath, passwd=True)
-            t1 = os.path.getmtime(fpath)
-            os.system(f'vim "{fpath}"')
-            t2 = os.path.getmtime(fpath)
-            if t1 != t2:
-                file2record(fpath, r2)
-                self.vault.records.append(r2)
-                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
-                self.records.insert(i, r2)
-        finally:
-            if fd:
-                os.close(fd)
-                os.remove(fpath)
+        r2 = duplicate_record(r)
+        if edit_record(r2, passwd=True):
+            self.vault.records.append(r2)
+            self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+            self.records.insert(i, r2)
         self.win.refresh()
 
 
