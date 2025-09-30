@@ -32,17 +32,18 @@ HELP = [
     ("PgDown", "Page down"),
     ("g, Home", "Move to first item"),
     ("G, End", "Move to last item"),
-    ("Alt_{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
-    ("Alt_{T,U,M,C,G}", "Sort reversed"),
+    ("Alt-{t,u,m,c,g}", "Sort by title, user, modtime, created, group"),
+    ("Alt-{T,U,M,C,G}", "Sort reversed"),
     ("Delete", "Delete current record"),
+    ("Insert", "Insert record"),
     ("d", "Duplicate current record"),
     ("e", "Edit current record w/o password"),
     ("E", "Edit current record w/ password"),
     ("L", "Launch URL"),
     ("s", "Search records"),
-    ("Ctrl_U", "Copy Username to clipboard"),
-    ("Ctrl_P", "Copy Password to clipboard"),
-    ("Ctrl_L", "Copy URL to clipboard"),
+    ("Ctrl-U", "Copy Username to clipboard"),
+    ("Ctrl-P", "Copy Password to clipboard"),
+    ("Ctrl-L", "Copy URL to clipboard"),
 ]
 
 SORT: dict[str, Callable[[Record], tuple]] = {
