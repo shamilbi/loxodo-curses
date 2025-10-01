@@ -73,6 +73,8 @@ def stream2dict(fp, passwd=False) -> dict:
             d[key] += line.rstrip() + '\r\n'
         if line != t[0]:
             continue
+        if key not in d:
+            d[key] = ''
         read_value = t[2]
     return d
 
