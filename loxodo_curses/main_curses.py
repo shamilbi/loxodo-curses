@@ -1,5 +1,3 @@
-# from os import environ, system
-# from os.path import exists, expanduser, join
 import binascii
 import curses
 import curses.ascii
