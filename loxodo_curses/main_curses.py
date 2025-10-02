@@ -20,7 +20,7 @@ import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
 from .curses_utils import List, ask_delete, win_addstr, win_help
-from .utils import RowString, chunkstring, get_passwd, input_file, int2time, str2clipboard
+from .utils import RowString, chunkstring, get_new_passwd, get_passwd, input_file, int2time, str2clipboard
 from .vault import BadPasswordError, Record, Vault, duplicate_record
 from .vault_utils import edit_record, record2str
 
@@ -43,6 +43,7 @@ HELP = [
     ("L", "Launch URL"),
     ("s", "Search records"),
     ("S", "New search"),
+    ("P", "Change vault password"),
     ("Ctrl-U", "Copy Username to clipboard"),
     ("Ctrl-P", "Copy Password to clipboard"),
     ("Ctrl-L", "Copy URL to clipboard"),
@@ -76,7 +77,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         self.vault_passwd = passwd
         self.screen = screen
 
-        signal(SIGINT, self.shutdown)  # type: ignore[arg-type]
+        self.orig_sigint = signal(SIGINT, self.shutdown)  # type: ignore[arg-type]
         signal(SIGTERM, self.shutdown)  # type: ignore[arg-type]
         signal(SIGWINCH, self.sigwinch_handler)
 
@@ -411,7 +412,8 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                     self.search()
                 elif char == 'E':
                     self.edit_record(self.win.idx, passwd=True)  # not using curses
-                    # self.screen.refresh()
+                elif char == 'P':
+                    self.change_vault_passwd()  # not using curses
                 elif char == 'L':
                     self.run_url()
                 elif char.upper() == 'H':  # Print help screen
@@ -441,6 +443,20 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         if edit_record(r, passwd=passwd):
             self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
         self.win.refresh()
+
+    def change_vault_passwd(self):
+        curses.endwin()
+        old = signal(SIGINT, self.orig_sigint)  # type: ignore[arg-type]
+        try:
+            passwd = get_new_passwd(self.vault_passwd.decode('utf-8'))
+            if passwd:
+                bytes_ = passwd.encode('utf-8')
+                print('Wait ...')
+                self.vault.write_to_file(self.vault_fpath, bytes_)
+                self.vault_passwd = bytes_
+        finally:
+            signal(SIGINT, old)  # type: ignore[arg-type]
+        self.screen.refresh()
 
     def duplicate_record(self, i: int):
         if not (r := self.get_record(i)):
@@ -484,7 +500,7 @@ def main():
         fpath = input_file('Pwsafe file: ')
         while True:
             try:
-                passwd: bytes = get_passwd('Password: ').encode('latin1', 'replace')
+                passwd: bytes = get_passwd('Password: ').encode('utf-8')
                 vault = Vault(passwd, fpath)
                 break
             except BadPasswordError:
