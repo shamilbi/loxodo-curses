@@ -402,9 +402,10 @@ class Vault:
             self._read_from_file(filename, password)
 
     @staticmethod
-    def create(password, filename):
+    def create(password, filename) -> "Vault":
         vault = Vault(password)
         vault.write_to_file(filename, password)
+        return vault
 
     def _create_empty(self, password: bytes):
         self.f_tag = FILE_MAGIC
