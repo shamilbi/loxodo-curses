@@ -3,3 +3,5 @@ max-line-length = 120
 extend-ignore =
     # whitespace before :
     E203,
+    # ambiguous variable name 'l'
+    E741,
