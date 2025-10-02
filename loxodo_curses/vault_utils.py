@@ -1,5 +1,6 @@
 import io
 import os
+import subprocess
 import tempfile
 
 from .vault import Record
@@ -91,7 +92,7 @@ def edit_record(r: Record, passwd: bool = False) -> bool:
         fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
         record2file(r, fpath, passwd=passwd)
         t1 = os.path.getmtime(fpath)
-        os.system(f'vim "{fpath}"')
+        subprocess.run(['vim', fpath], check=False)
         t2 = os.path.getmtime(fpath)
         if t1 != t2:
             file2record(fpath, r, passwd=passwd)  # r changed
