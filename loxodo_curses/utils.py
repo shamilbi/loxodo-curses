@@ -35,7 +35,7 @@ def input_file(prompt: str):
         s = s.strip()
         if not s:
             continue
-        if os.path.isfile(s):
+        if os.path.isfile(s) or not os.path.exists(s):
             return s
         print(f'{s} is not a file')
 
