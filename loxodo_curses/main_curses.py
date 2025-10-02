@@ -498,10 +498,15 @@ def main2(vault: Vault, fpath: str, passwd: bytes, screen):
 def main():
     try:
         fpath = input_file('Pwsafe file: ')
+        if not os.path.exists(fpath):
+            print(f'New vault: {fpath}')
         while True:
             try:
                 passwd: bytes = get_passwd('Password: ').encode('utf-8')
-                vault = Vault(passwd, fpath)
+                if os.path.isfile(fpath):
+                    vault = Vault(passwd, fpath)
+                else:
+                    vault = Vault.create(passwd, fpath)
                 break
             except BadPasswordError:
                 print('bad password!')
