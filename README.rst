@@ -1,8 +1,7 @@
+|pypi| |github|
+
 loxodo-curses
 =============
-
-.. image:: https://badge.fury.io/py/loxodo-curses.svg
-    :target: https://badge.fury.io/py/loxodo-curses
 
 loxodo-curses is a curses frontend to `Password Safe`_ V3 compatible Password Vault.
 A fork of `Loxodo`_.
@@ -34,5 +33,9 @@ The current hotkeys are:
     * Ctrl-P: Copy Password to clipboard
     * Ctrl-L: Copy URL to clipboard
 
+.. |pypi| image:: https://badgen.net/pypi/v/loxodo-curses
+          :target: https://pypi.org/project/loxodo-curses/
+.. |github| image:: https://badgen.net/github/tag/shamilbi/loxodo-curses?label=github
+            :target: https://github.com/shamilbi/loxodo-curses/
 .. _Password Safe: https://www.pwsafe.org/
 .. _Loxodo: https://github.com/sommer/loxodo
