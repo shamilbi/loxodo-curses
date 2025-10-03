@@ -28,7 +28,7 @@ The current hotkeys are:
     * E: Edit current record w/ password
     * L: Launch URL
     * s: Search records
-    * S: New search
+    * S: Continue search
     * P: Change vault password
     * Ctrl-U: Copy Username to clipboard
     * Ctrl-P: Copy Password to clipboard
