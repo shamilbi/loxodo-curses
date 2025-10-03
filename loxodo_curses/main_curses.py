@@ -40,7 +40,7 @@ HELP = [
     ("E", "Edit current record w/ password"),
     ("L", "Launch URL"),
     ("s", "Search records"),
-    ("S", "New search"),
+    ("S", "Continue search"),
     ("P", "Change vault password"),
     ("Ctrl-U", "Copy Username to clipboard"),
     ("Ctrl-P", "Copy Password to clipboard"),
@@ -403,9 +403,9 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 elif char == 'd':
                     self.duplicate_record(self.win.idx)  # not using curses
                     # self.screen.refresh()
-                elif char == 's':
-                    self.search()
                 elif char == 'S':
+                    self.search()
+                elif char == 's':
                     self._filterstring = ''
                     self.search()
                 elif char == 'E':
