@@ -6,8 +6,7 @@ loxodo-curses
 loxodo-curses is a curses frontend to `Password Safe`_ V3 compatible Password Vault.
 A fork of `Loxodo`_.
 
-Editing a file is performed with Vim, utilizing a temporary file in /dev/shm.
-Launching a URL is accomplished using xdg-open.
+Editing a record is done with Vim, using a temporary file located in /dev/shm. To launch a URL, xdg-open is used, while copying to the clipboard is handled by xsel.
 
 The current hotkeys are:
     * h: help screen
