@@ -18,7 +18,7 @@ import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
 from .curses_utils import List, ask_delete, win_addstr, win_help
-from .utils import RowString, chunkstring, get_new_passwd, get_passwd, input_file, int2time, str2clipboard
+from .utils import FilterString, RowString, chunkstring, get_new_passwd, get_passwd, input_file, int2time, str2clipboard
 from .vault import BadPasswordError, Record, Vault, duplicate_record
 from .vault_utils import edit_record, record2str
 
@@ -75,8 +75,8 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         self.vault_passwd = passwd
         self.screen = screen
 
-        self.orig_sigint = signal(SIGINT, self.shutdown)  # type: ignore[arg-type]
-        signal(SIGTERM, self.shutdown)  # type: ignore[arg-type]
+        self.orig_sigint = signal(SIGINT, self.shutdown)
+        signal(SIGTERM, self.shutdown)
         signal(SIGWINCH, self.sigwinch_handler)
 
         self.screen.keypad(1)
@@ -87,7 +87,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
         self.screen_size = (curses.LINES, curses.COLS)  # pylint: disable=no-member
 
-        self._filterstring = ''
+        self.filter = FilterString()
         self.sort()
 
         # title, user, last_mod, created, group
@@ -163,7 +163,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             current_color=curses.color_pair(1) | curses.A_BOLD,
         )
 
-        self.win2 = self.screen.derwin(rows, cols2, 2, cols1)
+        self.win2 = self.screen.derwin(rows, cols2, 3, cols1)
 
         # status
         self.win3 = self.screen.derwin(2, cols, maxy - 2, 0)
@@ -204,15 +204,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         return len(self.records)
 
     def filter_record(self, record):
-        if not self._filterstring:
-            return True
-        if record.title.lower().find(self._filterstring.lower()) >= 0:
-            return True
-        if record.group.lower().find(self._filterstring.lower()) >= 0:
-            return True
-        if record.user.lower().find(self._filterstring.lower()) >= 0:
-            return True
-        return False
+        return self.filter.found(record.title, record.group, record.user)
 
     def create_header(self):
         headers = []
@@ -238,7 +230,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         win_addstr(self.screen, 0, 0, s[:cols])
 
         win_addstr(self.screen, 1, 0, self.prompt_search[:cols])
-        win_addstr(self.win_search, 0, 0, self._filterstring)
+        win_addstr(self.win_search, 0, 0, self.filter.filter_string)
 
         win_addstr(self.screen, 2, 0, self.create_header())
         # self.screen.refresh()
@@ -280,12 +272,12 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
 
     def search(self):
         self.win_search.erase()
-        win_addstr(self.win_search, 0, 0, self._filterstring)
+        win_addstr(self.win_search, 0, 0, self.filter.filter_string)
         try:
             curses.curs_set(1)
             box = Textbox(self.win_search)
             box.edit()
-            self._filterstring = box.gather().rstrip()
+            self.filter.set(box.gather().rstrip())
         finally:
             curses.curs_set(0)
         self.sort2(self.sortedby)
@@ -406,7 +398,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 elif char == 'S':
                     self.search()
                 elif char == 's':
-                    self._filterstring = ''
+                    self.filter.set()
                     self.search()
                 elif char == 'E':
                     self.edit_record(self.win.idx, passwd=True)  # not using curses
@@ -444,7 +436,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
 
     def change_vault_passwd(self):
         curses.endwin()
-        old = signal(SIGINT, self.orig_sigint)  # type: ignore[arg-type]
+        old = signal(SIGINT, self.orig_sigint)
         try:
             passwd = get_new_passwd(self.vault_passwd.decode('utf-8'))
             if passwd:
@@ -453,7 +445,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                 self.vault.write_to_file(self.vault_fpath, bytes_)
                 self.vault_passwd = bytes_
         finally:
-            signal(SIGINT, old)  # type: ignore[arg-type]
+            signal(SIGINT, old)
         self.screen.refresh()
 
     def duplicate_record(self, i: int):
