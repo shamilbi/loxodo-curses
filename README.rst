@@ -8,6 +8,8 @@ A fork of `Loxodo`_.
 
 Editing a record is done with Vim, using a temporary file located in /dev/shm. To launch a URL, xdg-open is used, while copying to the clipboard is handled by xsel.
 
+To generate a password, just run the command ":read !pwmake 96" in Vim (pwmake is part of libpwquality).
+
 The current hotkeys are:
     * h: help screen
     * q, Esc: Quit the program
