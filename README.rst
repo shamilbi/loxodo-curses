@@ -8,7 +8,8 @@ A fork of `Loxodo`_.
 
 Editing a record is done with Vim, using a temporary file located in /dev/shm. To launch a URL, xdg-open is used, while copying to the clipboard is handled by xsel.
 
-To generate a password, just run the command ":read !pwmake 96" in Vim (pwmake is part of libpwquality).
+To generate a password, just run the command ":read !pwmake 96" in Vim (pwmake is part of `libpwquality`_)
+or ":read !diceware -d ' ' -s 2" (`diceware`_).
 
 The current hotkeys are:
     * h: help screen
@@ -40,3 +41,5 @@ The current hotkeys are:
             :target: https://github.com/shamilbi/loxodo-curses/
 .. _Password Safe: https://www.pwsafe.org/
 .. _Loxodo: https://github.com/sommer/loxodo
+.. _libpwquality: https://github.com/libpwquality/libpwquality
+.. _diceware: https://pypi.org/project/diceware/
