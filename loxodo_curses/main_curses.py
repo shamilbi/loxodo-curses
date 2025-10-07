@@ -5,19 +5,18 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 import webbrowser
 from collections.abc import Callable
 from contextlib import contextmanager
 from curses.textpad import Textbox
 from functools import partial
-from signal import SIGINT, SIGTERM, SIGWINCH, signal
+from signal import SIGINT, signal
 from threading import Timer
 
 import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
-from .curses_utils import List, ask_delete, win_addstr, win_help
+from .curses_utils import App, List, ask_delete, win_addstr, win_help
 from .utils import FilterString, RowString, chunkstring, get_new_passwd, get_passwd, input_file, int2time, str2clipboard
 from .vault import BadPasswordError, Record, Vault, duplicate_record
 from .vault_utils import edit_record, record2str
@@ -68,24 +67,15 @@ SORT_UP = '\u2191'
 SORT_DOWN = '\u2193'
 
 
-class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     def __init__(self, vault: Vault, fpath: str, passwd: bytes, screen):
+        super().__init__(screen)
+
         self.vault = vault
         self.vault_fpath = fpath
         self.vault_passwd = passwd
-        self.screen = screen
-
-        self.orig_sigint = signal(SIGINT, self.shutdown)
-        signal(SIGTERM, self.shutdown)
-        signal(SIGWINCH, self.sigwinch_handler)
-
-        self.screen.keypad(1)
-        curses.curs_set(0)
-        curses.noecho()
-        curses.start_color()
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
-        self.screen_size = (curses.LINES, curses.COLS)  # pylint: disable=no-member
 
         self.filter = FilterString()
         self.sort()
@@ -96,12 +86,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         self.create_windows()
 
         self.clear_thread: Timer | None = None  # thread to clear clipboard
-
-    def sigwinch_handler(self, *_):
-        maxx, maxy = os.get_terminal_size()
-        self.screen_size = (maxy, maxx)
-        self.create_windows()
-        self.refresh_all()
 
     def sort(self, sortby: str = 't') -> bool:
         if not sortby:
@@ -248,6 +232,7 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
         self.screen.refresh()
 
     def run(self):
+        self.refresh_all()
         self.input_loop()
 
     def handle_alt_key(self):
@@ -355,7 +340,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
             self.status('URL is empty')
 
     def input_loop(self):  # pylint: disable=too-many-branches,too-many-statements
-        self.refresh_all()
         while True:
             try:
                 char_ord = self.screen.getch()
@@ -422,9 +406,6 @@ class Main:  # pylint: disable=too-many-instance-attributes,too-many-public-meth
                     self.status(f'{char_ord=}, {name=}')
             except curses.error:
                 pass
-
-    def shutdown(self, *_):
-        sys.exit(0)
 
     def edit_record(self, i: int, passwd=False):
         if not (r := self.get_record(i)):
