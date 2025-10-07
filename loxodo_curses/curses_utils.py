@@ -1,8 +1,10 @@
 import curses
+import curses.ascii
 import os
 import sys
 from collections.abc import Callable
 from signal import SIGINT, SIGTERM, SIGWINCH, signal
+from typing import Generator
 
 
 def win_addstr(
@@ -268,3 +270,39 @@ class App:
 
     def refresh_all(self):
         pass
+
+    def handle_alt_key(self, ch: int):
+        pass
+
+    def _handle_alt_key(self):
+        # https://stackoverflow.com/a/22362849
+        ch = -1
+        try:
+            self.screen.nodelay(True)
+            ch = self.screen.getch()  # get the key pressed after ALT
+        finally:
+            self.screen.nodelay(False)
+        if ch == -1:
+            self.shutdown()
+        self.handle_alt_key(ch)
+
+    def getch(self) -> Generator[int, None, None]:
+        while True:
+            try:
+                ch = self.screen.getch()
+
+                if ch == -1:
+                    # SIGWINCH interrupt
+                    # t = self.screen.getmaxyx()  # doesn't work
+                    continue
+
+                if ch == curses.ascii.ESC:  # Esc
+                    self._handle_alt_key()
+                elif ch == curses.KEY_RESIZE:
+                    # doesn't work
+                    # t = self.screen.getmaxyx()
+                    pass
+                else:
+                    yield ch
+            except curses.error:
+                pass
