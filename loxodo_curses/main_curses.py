@@ -235,16 +235,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         self.refresh_all()
         self.input_loop()
 
-    def handle_alt_key(self):
-        # https://stackoverflow.com/a/22362849
-        ch = -1
-        try:
-            self.screen.nodelay(True)
-            ch = self.screen.getch()  # get the key pressed after ALT
-        finally:
-            self.screen.nodelay(False)
-        if ch == -1:
-            self.shutdown()
+    def handle_alt_key(self, ch: int):
         if (ch2 := chr(ch)).lower() in SORT_KEYS:
             self.sort2(ch2)
 
@@ -340,72 +331,56 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
             self.status('URL is empty')
 
     def input_loop(self):  # pylint: disable=too-many-branches,too-many-statements
-        while True:
-            try:
-                char_ord = self.screen.getch()
-                if char_ord == -1:
-                    # SIGWINCH interrupt
-                    # t = self.screen.getmaxyx()  # doesn't work
-                    # self.status('SIGWINCH interrupt')
-                    continue
-                char = chr(char_ord)
+        for char_ord in self.getch():
+            char = chr(char_ord)
 
-                if char_ord == curses.ascii.ESC:  # Esc
-                    self.handle_alt_key()
-                elif char_ord == curses.KEY_RESIZE:
-                    # doesn't work
-                    # t = self.screen.getmaxyx()
-                    pass
-                elif char_ord == curses.KEY_DC:  # delete
-                    self.del_record(self.win.idx)
-                elif char_ord == curses.KEY_IC:  # insert
-                    self.insert_record(self.win.idx)
-                elif char.upper() == 'Q':
-                    self.shutdown()
-                elif char.upper() == 'J' or char_ord == curses.KEY_DOWN:  # Down or J
-                    self.win.scroll_down()
-                elif char.upper() == 'K' or char_ord == curses.KEY_UP:  # Up or K
-                    self.win.scroll_up()
-                elif char == 'g' or char_ord == curses.KEY_HOME:  # Move to top
-                    self.win.scroll_top()
-                elif char == 'G' or char_ord == curses.KEY_END:  # Move to last item
-                    self.win.scroll_bottom()
-                elif char_ord == curses.KEY_NPAGE:  # Page down
-                    self.win.scroll_page_down()
-                elif char_ord == curses.KEY_PPAGE:  # Page up
-                    self.win.scroll_page_up()
-                elif char == 'e':
-                    self.edit_record(self.win.idx)  # not using curses
-                elif char == 'd':
-                    self.duplicate_record(self.win.idx)  # not using curses
-                    # self.screen.refresh()
-                elif char == 'S':
-                    self.search()
-                elif char == 's':
-                    self.filter.set()
-                    self.search()
-                elif char == 'E':
-                    self.edit_record(self.win.idx, passwd=True)  # not using curses
-                elif char == 'P':
-                    self.change_vault_passwd()  # not using curses
-                elif char == 'L':
-                    self.run_url()
-                elif char.upper() == 'H':  # Print help screen
-                    win_help(self.screen, HELP)
-                    self.refresh_all()
-                elif char_ord == 12:  # ^L
-                    self.url2clipboard()
-                elif char_ord == 21:  # ^U
-                    self.user2clipboard()
-                elif char_ord == 16:  # ^P
-                    self.passwd2clipboard()
-                elif char_ord == 20:  # ^T
-                    self.totp2clipboard()
-                else:
-                    name = curses.keyname(char_ord).decode('utf-8')
-                    self.status(f'{char_ord=}, {name=}')
-            except curses.error:
-                pass
+            if char_ord == curses.KEY_DC:  # delete
+                self.del_record(self.win.idx)
+            elif char_ord == curses.KEY_IC:  # insert
+                self.insert_record(self.win.idx)
+            elif char.upper() == 'Q':
+                self.shutdown()
+            elif char.upper() == 'J' or char_ord == curses.KEY_DOWN:  # Down or J
+                self.win.scroll_down()
+            elif char.upper() == 'K' or char_ord == curses.KEY_UP:  # Up or K
+                self.win.scroll_up()
+            elif char == 'g' or char_ord == curses.KEY_HOME:  # Move to top
+                self.win.scroll_top()
+            elif char == 'G' or char_ord == curses.KEY_END:  # Move to last item
+                self.win.scroll_bottom()
+            elif char_ord == curses.KEY_NPAGE:  # Page down
+                self.win.scroll_page_down()
+            elif char_ord == curses.KEY_PPAGE:  # Page up
+                self.win.scroll_page_up()
+            elif char == 'e':
+                self.edit_record(self.win.idx)  # not using curses
+            elif char == 'd':
+                self.duplicate_record(self.win.idx)  # not using curses
+            elif char == 'S':
+                self.search()
+            elif char == 's':
+                self.filter.set()
+                self.search()
+            elif char == 'E':
+                self.edit_record(self.win.idx, passwd=True)  # not using curses
+            elif char == 'P':
+                self.change_vault_passwd()  # not using curses
+            elif char == 'L':
+                self.run_url()
+            elif char.upper() == 'H':  # Print help screen
+                win_help(self.screen, HELP)
+                self.refresh_all()
+            elif char_ord == 12:  # ^L
+                self.url2clipboard()
+            elif char_ord == 21:  # ^U
+                self.user2clipboard()
+            elif char_ord == 16:  # ^P
+                self.passwd2clipboard()
+            elif char_ord == 20:  # ^T
+                self.totp2clipboard()
+            else:
+                name = curses.keyname(char_ord).decode('utf-8')
+                self.status(f'{char_ord=}, {name=}')
 
     def edit_record(self, i: int, passwd=False):
         if not (r := self.get_record(i)):
