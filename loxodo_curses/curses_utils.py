@@ -1,5 +1,8 @@
 import curses
+import os
+import sys
 from collections.abc import Callable
+from signal import SIGINT, SIGTERM, SIGWINCH, signal
 
 
 def win_addstr(
@@ -234,3 +237,34 @@ class List:
             self.refresh()
         else:
             self.scroll_top()
+
+
+class App:
+    def __init__(self, screen):
+        self.screen = screen
+
+        self.orig_sigint = signal(SIGINT, self.shutdown)
+        signal(SIGTERM, self.shutdown)
+        signal(SIGWINCH, self.sigwinch_handler)
+
+        self.screen.keypad(1)
+        curses.curs_set(0)
+        curses.noecho()
+        curses.start_color()
+
+        self.screen_size = (curses.LINES, curses.COLS)  # pylint: disable=no-member
+
+    def sigwinch_handler(self, *_):
+        maxx, maxy = os.get_terminal_size()
+        self.screen_size = (maxy, maxx)
+        self.create_windows()
+        self.refresh_all()
+
+    def shutdown(self, *_):
+        sys.exit(0)
+
+    def create_windows(self):
+        pass
+
+    def refresh_all(self):
+        pass
