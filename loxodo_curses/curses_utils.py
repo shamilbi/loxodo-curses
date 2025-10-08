@@ -2,9 +2,8 @@ import curses
 import curses.ascii
 import os
 import sys
-from collections.abc import Callable
 from signal import SIGINT, SIGTERM, SIGWINCH, signal
-from typing import Generator
+from typing import Generator, Protocol
 
 
 def win_addstr(
@@ -111,25 +110,32 @@ def win_help(screen, help_: list[tuple[str, str]]):  # pylint: disable=too-many-
     screen.touchwin()
 
 
+class ListProto(Protocol):
+    def get_record_str(self, i: int) -> str:
+        pass
+
+    def records_len(self) -> int:
+        pass
+
+    def refresh_win_deps(self):
+        pass
+
+
 class List:
     '''
     A projection of an array of records r0...rX to a window lines of string s0...sY
-    where si = get_rec(j) = rj -> str, s(i+1) = get_rec(j+1), j < len_recs()
-    and changing cursor (i) leads to call refresh_deps()
+    where si = get_record_str(j) = rj -> str, s(i+1) = get_record_str(j+1), j < records_len()
+    and changing cursor (i) leads to call refresh_win_deps()
     '''
 
-    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
+    def __init__(
         self,
         win: curses.window,
-        get_rec: Callable[[int], str],
-        len_recs: Callable[[], int],
-        refresh_deps: Callable[[], None],
+        proto: ListProto,
         current_color: int = curses.A_BOLD,
     ):
         self.win = win
-        self.get_rec = get_rec
-        self.len_recs = len_recs
-        self.refresh_deps = refresh_deps
+        self.proto = proto
         self.current_color = current_color
 
         self.win.keypad(True)
@@ -139,7 +145,7 @@ class List:
 
     def refresh(self):
         self.win.erase()
-        len_ = self.len_recs()
+        len_ = self.proto.records_len()
         if len_:
             rows, _ = self.win.getmaxyx()
             if not self.idx < len_:  # deleted
@@ -149,21 +155,21 @@ class List:
                 idx = self.idx - self.cur + i
                 if not idx < len_:
                     break
-                s = self.get_rec(idx)
+                s = self.proto.get_record_str(idx)
                 if i == self.cur:
                     win_addstr(self.win, i, 0, s, attr=self.current_color)
                 else:
                     win_addstr(self.win, i, 0, s)
             self.win.move(self.cur, 0)
         self.win.refresh()
-        self.refresh_deps()
+        self.proto.refresh_win_deps()
 
     def scroll_top(self):
         self.idx = self.cur = 0
         self.refresh()
 
     def scroll_bottom(self):
-        len_ = self.len_recs()
+        len_ = self.proto.records_len()
         if not len_:
             return
         rows, _ = self.win.getmaxyx()
@@ -172,12 +178,12 @@ class List:
         self.refresh()
 
     def scroll_down(self):
-        len_ = self.len_recs()
+        len_ = self.proto.records_len()
         if not len_ or not self.idx + 1 < len_:
             return
         rows, _ = self.win.getmaxyx()
-        prev_s = self.get_rec(self.idx)
-        next_s = self.get_rec(self.idx + 1)
+        prev_s = self.proto.get_record_str(self.idx)
+        next_s = self.proto.get_record_str(self.idx + 1)
         win_addstr(self.win, self.cur, 0, prev_s)
         if self.cur + 1 < rows:
             self.cur += 1
@@ -188,14 +194,14 @@ class List:
         win_addstr(self.win, self.cur, 0, next_s, attr=self.current_color)
         self.idx += 1
         self.win.refresh()
-        self.refresh_deps()
+        self.proto.refresh_win_deps()
 
     def scroll_up(self):
-        len_ = self.len_recs()
+        len_ = self.proto.records_len()
         if not len_ or self.idx - 1 < 0:
             return
-        prev_s = self.get_rec(self.idx)
-        next_s = self.get_rec(self.idx - 1)
+        prev_s = self.proto.get_record_str(self.idx)
+        next_s = self.proto.get_record_str(self.idx - 1)
         win_addstr(self.win, self.cur, 0, prev_s)
         if self.cur > 0:
             self.cur -= 1
@@ -205,10 +211,10 @@ class List:
         win_addstr(self.win, self.cur, 0, next_s, attr=self.current_color)
         self.idx -= 1
         self.win.refresh()
-        self.refresh_deps()
+        self.proto.refresh_win_deps()
 
     def scroll_page_down(self):
-        len_ = self.len_recs()
+        len_ = self.proto.records_len()
         if not len_:
             return
         rows, _ = self.win.getmaxyx()
@@ -229,7 +235,7 @@ class List:
                 self.scroll_bottom()
 
     def scroll_page_up(self):
-        len_ = self.len_recs()
+        len_ = self.proto.records_len()
         if not len_:
             return
         rows, _ = self.win.getmaxyx()
@@ -239,6 +245,24 @@ class List:
             self.refresh()
         else:
             self.scroll_top()
+
+    def handle_input(self, ch: int) -> bool:
+        char = chr(ch)
+        if char.upper() == 'J' or ch == curses.KEY_DOWN:  # Down or J
+            self.scroll_down()
+        elif char.upper() == 'K' or ch == curses.KEY_UP:  # Up or K
+            self.scroll_up()
+        elif char == 'g' or ch == curses.KEY_HOME:  # Move to top
+            self.scroll_top()
+        elif char == 'G' or ch == curses.KEY_END:  # Move to last item
+            self.scroll_bottom()
+        elif ch == curses.KEY_NPAGE:  # Page down
+            self.scroll_page_down()
+        elif ch == curses.KEY_PPAGE:  # Page up
+            self.scroll_page_up()
+        else:
+            return False
+        return True
 
 
 class App:
@@ -303,6 +327,10 @@ class App:
                     # t = self.screen.getmaxyx()
                     pass
                 else:
-                    yield ch
+                    char = chr(ch)
+                    if char.upper() == 'Q':
+                        self.shutdown()
+                    else:
+                        yield ch
             except curses.error:
                 pass
