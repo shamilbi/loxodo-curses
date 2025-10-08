@@ -139,13 +139,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         self.win_search = self.screen.derwin(1, cols1 - len_, 1, len_)
 
         win = self.screen.derwin(rows, cols1, 3, 0)
-        self.win = List(
-            win,
-            self.get_record_str,
-            self.records_len,
-            self.refresh_win_deps,
-            current_color=curses.color_pair(1) | curses.A_BOLD,
-        )
+        self.win = List(win, self, current_color=curses.color_pair(1) | curses.A_BOLD)
 
         self.win2 = self.screen.derwin(rows, cols2, 3, cols1)
 
@@ -338,20 +332,8 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
                 self.del_record(self.win.idx)
             elif char_ord == curses.KEY_IC:  # insert
                 self.insert_record(self.win.idx)
-            elif char.upper() == 'Q':
-                self.shutdown()
-            elif char.upper() == 'J' or char_ord == curses.KEY_DOWN:  # Down or J
-                self.win.scroll_down()
-            elif char.upper() == 'K' or char_ord == curses.KEY_UP:  # Up or K
-                self.win.scroll_up()
-            elif char == 'g' or char_ord == curses.KEY_HOME:  # Move to top
-                self.win.scroll_top()
-            elif char == 'G' or char_ord == curses.KEY_END:  # Move to last item
-                self.win.scroll_bottom()
-            elif char_ord == curses.KEY_NPAGE:  # Page down
-                self.win.scroll_page_down()
-            elif char_ord == curses.KEY_PPAGE:  # Page up
-                self.win.scroll_page_up()
+            elif self.win.handle_input(char_ord):
+                pass
             elif char == 'e':
                 self.edit_record(self.win.idx)  # not using curses
             elif char == 'd':
