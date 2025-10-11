@@ -215,15 +215,15 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
 
         self.win.refresh()
 
+        self.screen.refresh()
+
         self.win2.erase()
         self.win2.box()
         self.refresh_win_deps()
 
         ch = curses.ACS_HLINE
         self.win3.border(' ', ' ', ch, ' ', ch, ch, ' ', ' ')
-        # self.win3.refresh()
-
-        self.screen.refresh()
+        self.win3.refresh()
 
     def run(self):
         self.refresh_all()
