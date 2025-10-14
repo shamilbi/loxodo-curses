@@ -130,21 +130,21 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         '''
         maxy, maxx = self.screen_size
 
-        rows, cols = (maxy - 5, maxx)
+        rows, cols = (maxy - 6, maxx)
         cols2 = min(cols // 3, 35)
         cols1 = cols - cols2
 
-        prompt = self.prompt_search = 'Search: '
+        prompt = self.prompt_search = ' Search: '
         len_ = len(prompt)
-        self.win_search = self.screen.derwin(1, cols1 - len_, 1, len_)
+        self.win_search = self.screen.derwin(1, maxx - len_, 1, len_)
 
-        win = self.screen.derwin(rows, cols1, 3, 0)
+        win = self.screen.derwin(rows, cols1 - 3, 4, 2)
         self.win = List(win, self, current_color=curses.color_pair(1) | curses.A_BOLD)
 
-        self.win2 = self.screen.derwin(rows, cols2, 3, cols1)
+        self.win2 = self.screen.derwin(maxy - 3, cols2, 2, cols1)
 
         # status
-        self.win3 = self.screen.derwin(2, cols, maxy - 2, 0)
+        self.win3 = self.screen.derwin(1, maxx, maxy - 1, 0)
 
     def refresh_win_deps(self):
         rows, cols = self.win2.getmaxyx()
@@ -200,30 +200,33 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         return self.row_string.value(*headers)
 
     def refresh_all(self):
-        self.screen.erase()
+        self.screen.clear()
 
         header = self.vault.header
-        s = f'Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
-        _, cols = self.win.win.getmaxyx()
-        win_addstr(self.screen, 0, 0, s[:cols])
+        s = f' Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
+        win_addstr(self.screen, 0, 0, s)
 
-        win_addstr(self.screen, 1, 0, self.prompt_search[:cols])
+        win_addstr(self.screen, 1, 0, self.prompt_search)
+        self.screen.refresh()
+
+        self.win_search.erase()
         win_addstr(self.win_search, 0, 0, self.filter.filter_string)
+        self.win_search.refresh()
 
-        win_addstr(self.screen, 2, 0, self.create_header())
-        # self.screen.refresh()
+        maxy, maxx = self.screen_size
+        win = self.screen.derwin(maxy - 3, maxx, 2, 0)
+        win.erase()
+        win_addstr(win, 1, 2, self.create_header())
+        win.box()
+        win.refresh()
 
         self.win.refresh()
 
-        self.screen.refresh()
-
         self.win2.erase()
-        self.win2.box()
-        self.refresh_win_deps()
+        self.win2.border(0, 0, 0, 0, curses.ACS_TTEE, 0, curses.ACS_BTEE, 0)
+        self.win2.refresh()
 
-        ch = curses.ACS_HLINE
-        self.win3.border(' ', ' ', ch, ' ', ch, ch, ' ', ' ')
-        self.win3.refresh()
+        self.refresh_win_deps()
 
     def run(self):
         self.refresh_all()
@@ -234,10 +237,9 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
             self.sort2(ch2)
 
     def status(self, s: str):
-        _, cols = self.win3.getmaxyx()
-        win = self.win3.derwin(1, cols, 1, 0)
+        win = self.win3
         win.erase()
-        win_addstr(win, 0, 0, s)
+        win_addstr(win, 0, 1, s)
         win.refresh()
 
     def search(self):
