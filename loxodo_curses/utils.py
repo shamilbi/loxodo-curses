@@ -1,10 +1,12 @@
 import glob
 import os
 import readline
+import threading
 import time
 from datetime import datetime
 from functools import lru_cache
 from getpass import getpass
+from signal import SIGINT, pthread_kill
 from subprocess import PIPE, Popen
 from typing import Generator
 
@@ -129,3 +131,38 @@ class FilterString:
             if all_found(s.lower(), self.filter_list):
                 return True
         return False
+
+
+class StopThread(threading.Thread):
+    'wait timeout ... raise SIGINT to stop App'
+
+    def __init__(self, timeout: int, stop: threading.Event):
+        self.timeout = timeout  # sec
+        self.stop = stop
+
+        self.lock = threading.RLock()
+        self.t0 = 0.0
+        self.parent = threading.get_ident()
+
+        super().__init__()
+
+    def reset(self):
+        with self.lock:
+            self.t0 = time.time()
+
+    def suspend(self):
+        with self.lock:
+            self.t0 = -1
+
+    def run(self):
+        self.reset()
+        while True:
+            if self.stop.wait(self.timeout):
+                return
+            with self.lock:
+                if self.t0 < 0:
+                    # wait indefinitely
+                    continue
+                if time.time() - self.t0 > self.timeout:
+                    pthread_kill(self.parent, SIGINT)
+                    break
