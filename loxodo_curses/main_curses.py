@@ -11,13 +11,23 @@ from contextlib import contextmanager
 from curses.textpad import Textbox
 from functools import partial
 from signal import SIGINT, signal
-from threading import Timer
+from threading import Event, Timer
 
 import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
 from .curses_utils import App, List, ask_delete, win_addstr, win_help
-from .utils import FilterString, RowString, chunkstring, get_new_passwd, get_passwd, input_file, int2time, str2clipboard
+from .utils import (
+    FilterString,
+    RowString,
+    StopThread,
+    chunkstring,
+    get_new_passwd,
+    get_passwd,
+    input_file,
+    int2time,
+    str2clipboard,
+)
 from .vault import BadPasswordError, Record, Vault, duplicate_record
 from .vault_utils import edit_record, record2str
 
@@ -74,6 +84,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         self.vault = vault
         self.vault_fpath = fpath
         self.vault_passwd = passwd
+
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_RED, curses.COLOR_BLACK)
 
@@ -86,6 +97,10 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         self.create_windows()
 
         self.clear_thread: Timer | None = None  # thread to clear clipboard
+
+        self.stop = Event()
+        self.stop_thread = StopThread(30 * 60, self.stop)  # 30 min
+        self.stop_thread.start()
 
     def sort(self, sortby: str = 't') -> bool:
         if not sortby:
@@ -233,6 +248,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         self.input_loop()
 
     def handle_alt_key(self, ch: int):
+        self.stop_thread.reset()
         if (ch2 := chr(ch)).lower() in SORT_KEYS:
             self.sort2(ch2)
 
@@ -275,6 +291,13 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
             self.status('Username copied to clipboard')
         else:
             self.status('Username is empty')
+
+    def shutdown(self, *_):
+        self.stop.set()
+        t = self.clear_thread
+        if t and t.is_alive():
+            t.cancel()
+        super().shutdown(*_)
 
     @contextmanager
     def check_clipboard(self):
@@ -328,6 +351,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
 
     def input_loop(self):  # pylint: disable=too-many-branches,too-many-statements
         for char_ord in self.getch():
+            self.stop_thread.reset()
             char = chr(char_ord)
 
             if char_ord == curses.KEY_DC:  # delete
