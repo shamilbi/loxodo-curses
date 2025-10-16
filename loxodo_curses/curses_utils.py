@@ -2,7 +2,9 @@ import curses
 import curses.ascii
 import os
 import sys
-from signal import SIGINT, SIGTERM, SIGWINCH, signal
+import threading
+import time
+from signal import SIGINT, SIGTERM, SIGWINCH, pthread_kill, signal
 from typing import Generator, Protocol
 
 
@@ -290,6 +292,9 @@ class App:
         self.refresh_all()
 
     def shutdown(self, *_):
+        if curses.isendwin():
+            # return to curses
+            self.screen.refresh()
         sys.exit(0)
 
     def create_windows(self):
@@ -337,3 +342,38 @@ class App:
                         yield ch
             except curses.error:
                 pass
+
+
+class StopWorker(threading.Thread):
+    'wait timeout ... raise SIGINT to stop App'
+
+    def __init__(self, timeout: int, stop: threading.Event):
+        self.timeout = timeout  # sec
+        self.stop = stop
+
+        self.lock = threading.RLock()
+        self.t0 = 0.0
+        self.parent = threading.get_ident()
+
+        super().__init__()
+
+    def reset(self):
+        with self.lock:
+            self.t0 = time.time()
+
+    def suspend(self):
+        with self.lock:
+            self.t0 = -1
+
+    def run(self):
+        self.reset()
+        while True:
+            if self.stop.wait(self.timeout):
+                return
+            with self.lock:
+                if self.t0 < 0:
+                    # wait indefinitely
+                    continue
+                if time.time() - self.t0 > self.timeout:
+                    pthread_kill(self.parent, SIGINT)
+                    break
