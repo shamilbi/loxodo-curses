@@ -149,6 +149,8 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         rows, cols = (maxy - 6, maxx)
         cols2 = min(cols // 3, 35)
         cols1 = cols - cols2
+        if no_win2 := cols1 < sum(self.row_string.widths[:2]):
+            cols1 = cols
 
         prompt = self.prompt_search = ' Search: '
         len_ = len(prompt)
@@ -157,12 +159,17 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         win = self.screen.derwin(rows, cols1 - 3, 4, 2)
         self.win = List(win, self, current_color=curses.color_pair(1) | curses.A_BOLD)
 
-        self.win2 = self.screen.derwin(maxy - 3, cols2, 2, cols1)
+        if no_win2:
+            self.win2 = None
+        else:
+            self.win2 = self.screen.derwin(maxy - 3, cols2, 2, cols1)
 
         # status
         self.win3 = self.screen.derwin(1, maxx, maxy - 1, 0)
 
     def refresh_win_deps(self):
+        if not self.win2:
+            return
         rows, cols = self.win2.getmaxyx()
         rows -= 2  # -borders
         cols -= 2  # -borders
@@ -238,9 +245,10 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
 
         self.win.refresh()
 
-        self.win2.erase()
-        self.win2.border(0, 0, 0, 0, curses.ACS_TTEE, 0, curses.ACS_BTEE, 0)
-        self.win2.refresh()
+        if self.win2:
+            self.win2.erase()
+            self.win2.border(0, 0, 0, 0, curses.ACS_TTEE, 0, curses.ACS_BTEE, 0)
+            self.win2.refresh()
 
         self.refresh_win_deps()
 
@@ -377,7 +385,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
             elif char == 'L':
                 self.run_url()
             elif char.upper() == 'H':  # Print help screen
-                win_help(self.screen, HELP)
+                win_help(self.win.win, HELP)
                 self.refresh_all()
             elif char_ord == 12:  # ^L
                 self.url2clipboard()
