@@ -34,6 +34,7 @@ The current hotkeys are:
     * Ctrl-U: Copy Username to clipboard
     * Ctrl-P: Copy Password to clipboard
     * Ctrl-L: Copy URL to clipboard
+    * Ctrl-T: Copy TOTP to clipboard
 
 .. |pypi| image:: https://badgen.net/pypi/v/loxodo-curses
           :target: https://pypi.org/project/loxodo-curses/
