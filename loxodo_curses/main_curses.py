@@ -54,6 +54,7 @@ HELP = [
     ("Ctrl-U", "Copy Username to clipboard"),
     ("Ctrl-P", "Copy Password to clipboard"),
     ("Ctrl-L", "Copy URL to clipboard"),
+    ("Ctrl-T", "Copy TOTP to clipboard"),
 ]
 
 SORT: dict[str, Callable[[Record], tuple]] = {
