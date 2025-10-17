@@ -11,6 +11,8 @@ Editing a record is done with Vim, using a temporary file located in /dev/shm. T
 To generate a password, just run the command ":read !pwmake 96" in Vim (pwmake is part of `libpwquality`_)
 or ":read !diceware -d ' ' -s 2" (`diceware`_).
 
+The app includes a timeout feature that automatically closes it after 30 minutes of inactivity.
+
 The current hotkeys are:
     * h: help screen
     * q, Esc: Quit the program
