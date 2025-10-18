@@ -1,5 +1,6 @@
 *.pyc
 *.tmp
 .*
+*.pex
 __pycache__/
 dist/
