@@ -308,6 +308,10 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
             t.cancel()
         super().shutdown(*_)
 
+    def clear_clipboard(self):
+        str2clipboard('')
+        self.status('')
+
     @contextmanager
     def check_clipboard(self):
         t = self.clear_thread
@@ -316,7 +320,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         try:
             yield
         finally:
-            t = self.clear_thread = Timer(10, str2clipboard, args=[''])
+            t = self.clear_thread = Timer(10, self.clear_clipboard)
             t.start()
 
     def passwd2clipboard(self):
