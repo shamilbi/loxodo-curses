@@ -137,6 +137,9 @@ class StopThread(threading.Thread):
     'wait timeout ... raise SIGINT to stop App'
 
     def __init__(self, timeout: int, stop: threading.Event):
+        if timeout <= 0:
+            raise ValueError('timeout <= 0')
+
         self.timeout = timeout  # sec
         self.stop = stop
 
@@ -156,13 +159,17 @@ class StopThread(threading.Thread):
 
     def run(self):
         self.reset()
+        t = self.timeout
         while True:
-            if self.stop.wait(self.timeout):
+            if self.stop.wait(t):
                 return
             with self.lock:
                 if self.t0 < 0:
                     # wait indefinitely
+                    t = self.timeout
                     continue
-                if time.time() - self.t0 > self.timeout:
+                dt = int(time.time() - self.t0)
+                if dt >= self.timeout:
                     pthread_kill(self.parent, SIGINT)
                     break
+            t = self.timeout - dt
