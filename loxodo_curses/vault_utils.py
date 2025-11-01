@@ -2,6 +2,7 @@ import io
 import os
 import subprocess
 import tempfile
+from typing import Callable
 
 from .vault import Record
 
@@ -20,15 +21,27 @@ def record2str(r: Record, passwd=False) -> str:
         return fp.getvalue()
 
 
+FIELDS: list[tuple[str, str, Callable[[Record], str], int]] = [
+    # id, title, r -> str, type
+    ('title', 'Title', lambda r: r.title, 1),
+    ('group', 'Group', lambda r: r.group, 1),
+    ('user', 'Username', lambda r: r.user, 1),
+    ('passwd', 'Password', lambda r: r.passwd, 1),
+    ('url', 'URL', lambda r: r.url, 1),
+    ('notes', 'Notes', notes2str, 2),
+]
+
+
 def record2stream(fp, r: Record, passwd=False):
-    fp.write(f'Title:\n{r.title}\n\n')
-    fp.write(f'Group:\n{r.group}\n\n')
-    fp.write(f'Username:\n{r.user}\n\n')
-    if passwd:
-        fp.write(f'Password:\n{r.passwd}\n\n')
-    fp.write(f'URL:\n{r.url}\n\n')
-    fp.write('Notes:\n')
-    fp.write(f'{notes2str(r)}\n')
+    first = True
+    for id_, s, f, _ in FIELDS:
+        if id_ == 'passwd' and not passwd:
+            continue
+        if first:
+            first = False
+        else:
+            fp.write('\n')
+        fp.write(f'{s}:\n{f(r)}\n')
 
 
 def file2record(fpath: str, r: Record, passwd=False):
@@ -39,7 +52,7 @@ def file2record(fpath: str, r: Record, passwd=False):
     if 'passwd' in d:
         r.passwd = d['passwd']
     r.url = d['url']
-    r.notes = d['notes']
+    r.notes = d['notes'].rstrip()
 
 
 def file2dict(fpath: str, passwd=False) -> dict:
@@ -48,35 +61,32 @@ def file2dict(fpath: str, passwd=False) -> dict:
 
 
 def stream2dict(fp, passwd=False) -> dict:
+    steps = []
+    for id_, s, _, type_ in FIELDS:
+        if id_ == 'passwd' and not passwd:
+            continue
+        steps.append((f'{s}:\n', id_, type_))
     d = {}
     step = 0
-    find = {}
-    find[i := 0] = ('Title:\n', 'title', 1)
-    find[i := i + 1] = ('Group:\n', 'group', 1)
-    find[i := i + 1] = ('Username:\n', 'user', 1)
-    if passwd:
-        find[i := i + 1] = ('Password:\n', 'passwd', 1)
-    find[i := i + 1] = ('URL:\n', 'url', 1)
-    find[i := i + 1] = ('Notes:\n', 'notes', 2)
     read_value = 0
     for line in fp:
-        t = find[step]
-        key = t[1]
+        s, id_, type_ = steps[step]
         if read_value == 1:
-            d[key] = line.rstrip()
+            d[id_] = line.rstrip()
             read_value = 0
             step += 1
+            if step >= len(steps):
+                break
             continue
         if read_value == 2:
             # read lines to the end
-            if key not in d:
-                d[key] = ''
-            d[key] += line.rstrip() + '\r\n'
-        if line != t[0]:
+            d[id_] += line.rstrip() + '\r\n'
             continue
-        if key not in d:
-            d[key] = ''
-        read_value = t[2]
+        if line != s:
+            continue
+        if id_ not in d:
+            d[id_] = ''
+        read_value = type_
     return d
 
 
