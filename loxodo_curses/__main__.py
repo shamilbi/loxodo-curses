@@ -8,7 +8,6 @@ import subprocess
 import webbrowser
 from collections.abc import Callable
 from contextlib import contextmanager
-from curses.textpad import Textbox
 from functools import partial
 from signal import SIGINT, signal
 from threading import Event, Timer
@@ -49,7 +48,6 @@ HELP = [
     ("E", "Edit current record w/ password"),
     ("L", "Launch URL"),
     ("s", "Search records"),
-    ("S", "Continue search"),
     ("P", "Change vault password"),
     ("Ctrl-U", "Copy Username to clipboard"),
     ("Ctrl-P", "Copy Password to clipboard"),
@@ -268,16 +266,17 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         win.refresh()
 
     def search(self):
-        self.win_search.erase()
-        win_addstr(self.win_search, 0, 0, self.filter.filter_string)
+        curses.endwin()
+        old = signal(SIGINT, self.orig_sigint)
         try:
-            curses.curs_set(1)
-            box = Textbox(self.win_search)
-            box.edit()
-            self.filter.set(box.gather().rstrip())
+            self.filter.set(input(self.prompt_search.lstrip()))
+            self.screen.refresh()
+            win_addstr(self.win_search, 0, 0, self.filter.filter_string)
+            self.sort2(self.sortedby)
+        except KeyboardInterrupt:
+            self.screen.refresh()
         finally:
-            curses.curs_set(0)
-        self.sort2(self.sortedby)
+            signal(SIGINT, old)
 
     def run_url(self):
         if not (r := self.get_record(self.win.idx)):
@@ -377,10 +376,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
                 self.edit_record(self.win.idx)  # not using curses
             elif char == 'd':
                 self.duplicate_record(self.win.idx)  # not using curses
-            elif char == 'S':
-                self.search()
             elif char == 's':
-                self.filter.set()
                 self.search()
             elif char == 'E':
                 self.edit_record(self.win.idx, passwd=True)  # not using curses
