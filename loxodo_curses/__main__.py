@@ -15,7 +15,7 @@ from threading import Event, Timer
 import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
-from .curses_utils import App, List, ask_delete, win_addstr, win_help
+from .curses_utils import App, List, ask_delete, input_search, win_addstr, win_help
 from .utils import (
     FilterString,
     RowString,
@@ -266,17 +266,11 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         win.refresh()
 
     def search(self):
-        curses.endwin()
-        old = signal(SIGINT, self.orig_sigint)
-        try:
-            self.filter.set(input(self.prompt_search.lstrip()))
-            self.screen.refresh()
+        ok, s = input_search(self, self.prompt_search.lstrip())
+        if ok:
+            self.filter.set(s)
             win_addstr(self.win_search, 0, 0, self.filter.filter_string)
             self.sort2(self.sortedby)
-        except KeyboardInterrupt:
-            self.screen.refresh()
-        finally:
-            signal(SIGINT, old)
 
     def run_url(self):
         if not (r := self.get_record(self.win.idx)):
