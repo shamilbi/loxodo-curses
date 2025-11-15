@@ -340,3 +340,18 @@ class App:
                         yield ch
             except curses.error:
                 pass
+
+
+def input_search(app: App, prompt: str) -> tuple[bool, str]:  # ok, search str
+    curses.endwin()
+    old = signal(SIGINT, app.orig_sigint)
+    try:
+        return (True, input(prompt))
+    except KeyboardInterrupt:
+        pass
+    finally:
+        # clear terminal for privacy
+        os.system('cls' if os.name == 'nt' else 'clear')
+        app.screen.refresh()
+        signal(SIGINT, old)
+    return (False, '')
