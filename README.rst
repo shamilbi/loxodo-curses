@@ -37,9 +37,9 @@ The current hotkeys are:
     * Ctrl-L: Copy URL to clipboard
     * Ctrl-T: Copy TOTP to clipboard
 
-.. |pypi| image:: https://badgen.net/pypi/v/loxodo-curses
+.. |pypi| image:: https://img.shields.io/pypi/v/loxodo-curses
           :target: https://pypi.org/project/loxodo-curses/
-.. |github| image:: https://badgen.net/github/tag/shamilbi/loxodo-curses?label=github
+.. |github| image:: https://img.shields.io/github/v/tag/shamilbi/loxodo-curses?label=github
             :target: https://github.com/shamilbi/loxodo-curses/
 .. _Password Safe: https://www.pwsafe.org/
 .. _Loxodo: https://github.com/sommer/loxodo
