@@ -111,11 +111,6 @@ def str2clipboard(s: str):
         p.communicate(input=s)
 
 
-def all_found(s: str, l: list[str]) -> bool:
-    'all items in l are found in s'
-    return all(s.find(i) >= 0 for i in l)
-
-
 class FilterString:
     def __init__(self):
         self.set()
@@ -127,10 +122,8 @@ class FilterString:
     def found(self, *fields: str) -> bool:
         if not self.filter_string:
             return True
-        for s in fields:
-            if all_found(s.lower(), self.filter_list):
-                return True
-        return False
+        fields2 = [i.lower() for i in fields]
+        return all(any(f2.find(s) >= 0 for f2 in fields2) for s in self.filter_list)
 
 
 class StopThread(threading.Thread):
