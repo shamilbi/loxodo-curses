@@ -9,13 +9,13 @@ import webbrowser
 from collections.abc import Callable
 from contextlib import contextmanager
 from functools import partial
-from signal import SIGINT, signal
 from threading import Event, Timer
 
 import mintotp  # type: ignore[import-untyped]
 
 from . import __version__
-from .curses_utils import App, List, ask_delete, input_search, win_addstr, win_help
+from .curses_utils import App, ask_delete, escape2terminal, input_search, win_addstr, win_help
+from .curses_utils.list1 import List, ListProto
 from .utils import (
     FilterString,
     RowString,
@@ -76,7 +76,7 @@ SORT_UP = '\u2191'
 SORT_DOWN = '\u2193'
 
 
-class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     def __init__(self, vault: Vault, fpath: str, passwd: bytes, screen):
         super().__init__(screen)
 
@@ -396,43 +396,38 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
     def edit_record(self, i: int, passwd=False):
         if not (r := self.get_record(i)):
             return
-        curses.endwin()
-        if edit_record(r, passwd=passwd):
-            self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+        with escape2terminal(self):
+            if edit_record(r, passwd=passwd):
+                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
         self.win.refresh()
 
     def change_vault_passwd(self):
-        curses.endwin()
-        old = signal(SIGINT, self.orig_sigint)
-        try:
+        with escape2terminal(self):
             passwd = get_new_passwd(self.vault_passwd.decode('utf-8'))
             if passwd:
                 bytes_ = passwd.encode('utf-8')
                 print('Wait ...')
                 self.vault.write_to_file(self.vault_fpath, bytes_)
                 self.vault_passwd = bytes_
-        finally:
-            signal(SIGINT, old)
-        self.screen.refresh()
 
     def duplicate_record(self, i: int):
         if not (r := self.get_record(i)):
             return
-        curses.endwin()
         r2 = duplicate_record(r)
-        if edit_record(r2, passwd=True):
-            self.vault.records.append(r2)
-            self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
-            self.records.insert(i, r2)
+        with escape2terminal(self):
+            if edit_record(r2, passwd=True):
+                self.vault.records.append(r2)
+                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+                self.records.insert(i, r2)
         self.win.refresh()
 
     def insert_record(self, i: int):
         r = Record.create()
-        curses.endwin()
-        if edit_record(r, passwd=True):
-            self.vault.records.append(r)
-            self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
-            self.records.insert(i, r)
+        with escape2terminal(self):
+            if edit_record(r, passwd=True):
+                self.vault.records.append(r)
+                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+                self.records.insert(i, r)
         self.win.refresh()
 
 
