@@ -4,3 +4,4 @@
 *.pex
 __pycache__/
 dist/
+tmp/
