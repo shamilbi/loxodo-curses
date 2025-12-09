@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import webbrowser
 from collections.abc import Callable
 from contextlib import contextmanager
@@ -398,17 +399,28 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
             return
         with escape2terminal(self):
             if edit_record(r, passwd=passwd):
-                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+                try:
+                    print('Wait ...')
+                    self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+                    print('OK')
+                except KeyboardInterrupt:
+                    print('Failed')
+                    time.sleep(0.5)
         self.win.refresh()
 
     def change_vault_passwd(self):
         with escape2terminal(self):
             passwd = get_new_passwd(self.vault_passwd.decode('utf-8'))
             if passwd:
-                bytes_ = passwd.encode('utf-8')
-                print('Wait ...')
-                self.vault.write_to_file(self.vault_fpath, bytes_)
-                self.vault_passwd = bytes_
+                try:
+                    bytes_ = passwd.encode('utf-8')
+                    print('Wait ...')
+                    self.vault.write_to_file(self.vault_fpath, bytes_)
+                    self.vault_passwd = bytes_
+                    print('OK')
+                except KeyboardInterrupt:
+                    print('Failed')
+                    time.sleep(0.5)
 
     def duplicate_record(self, i: int):
         if not (r := self.get_record(i)):
@@ -416,18 +428,30 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         r2 = duplicate_record(r)
         with escape2terminal(self):
             if edit_record(r2, passwd=True):
-                self.vault.records.append(r2)
-                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
-                self.records.insert(i, r2)
+                try:
+                    print('Wait ...')
+                    self.vault.records.append(r2)
+                    self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+                    self.records.insert(i, r2)
+                    print('OK')
+                except KeyboardInterrupt:
+                    print('Failed')
+                    time.sleep(0.5)
         self.win.refresh()
 
     def insert_record(self, i: int):
         r = Record.create()
         with escape2terminal(self):
             if edit_record(r, passwd=True):
-                self.vault.records.append(r)
-                self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
-                self.records.insert(i, r)
+                try:
+                    print('Wait ...')
+                    self.vault.records.append(r)
+                    self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
+                    self.records.insert(i, r)
+                    print('OK')
+                except KeyboardInterrupt:
+                    print('Failed')
+                    time.sleep(0.5)
         self.win.refresh()
 
 
