@@ -15,7 +15,8 @@ main2() {
         -o dist/loxodo-curses.pex
         --project .
         --python python3.13
-        #--python-shebang "/usr/bin/env python3"
+        -e loxodo_curses.__main__:main
+        --python-shebang "/usr/bin/env python3"
     )
     "$pex" "${opts[@]}"
 }
