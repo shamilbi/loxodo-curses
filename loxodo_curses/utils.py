@@ -77,7 +77,7 @@ def int2time(i: int) -> str:
     return datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
 
 
-def chunkstring(s: str, chunk_len: int) -> Generator[str]:
+def chunkstring(s: str, chunk_len: int) -> Generator[str, None, None]:
     len_ = len(s)
     i = 0
     while True:
