@@ -8,9 +8,8 @@ import subprocess
 import time
 import webbrowser
 from collections.abc import Callable
-from contextlib import contextmanager
 from functools import partial
-from threading import Event, Timer
+from threading import Event
 
 import mintotp  # type: ignore[import-untyped]
 
@@ -18,6 +17,7 @@ from . import __version__
 from .curses_utils import App, ask_delete, escape2terminal, input_search, win_addstr, win_help
 from .curses_utils.list1 import List, ListProto
 from .utils import (
+    ClearTimer,
     FilterString,
     RowString,
     StopThread,
@@ -96,7 +96,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
         self.create_windows()
 
-        self.clear_thread: Timer | None = None  # thread to clear clipboard
+        self.clear_timer = ClearTimer(10, self.clear_clipboard)
 
         self.stop = Event()
         self.stop_thread = StopThread(30 * 60, self.stop)  # 30 min
@@ -290,6 +290,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         if not (r := self.get_record(self.win.idx)):
             return
         if r.user:
+            self.clear_timer.stop()
             str2clipboard(r.user)
             self.status('Username copied to clipboard')
         else:
@@ -297,31 +298,18 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
     def shutdown(self, *_):
         self.stop.set()
-        t = self.clear_thread
-        if t and t.is_alive():
-            t.cancel()
+        self.clear_timer.stop()
         super().shutdown(*_)
 
     def clear_clipboard(self):
         str2clipboard('')
         self.status('')
 
-    @contextmanager
-    def check_clipboard(self):
-        t = self.clear_thread
-        if t and t.is_alive():
-            t.cancel()
-        try:
-            yield
-        finally:
-            t = self.clear_thread = Timer(10, self.clear_clipboard)
-            t.start()
-
     def passwd2clipboard(self):
         if not (r := self.get_record(self.win.idx)):
             return
         if r.passwd:
-            with self.check_clipboard():
+            with self.clear_timer.stop_start():
                 str2clipboard(r.passwd)
             self.status('Password copied to clipboard')
         else:
@@ -339,7 +327,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
             digest = 'sha1'
         try:
             totp = mintotp.totp(passwd2, digest=digest)
-            with self.check_clipboard():
+            with self.clear_timer.stop_start():
                 str2clipboard(totp)
             totp2 = ' '.join([totp[i : i + 3] for i in range(0, len(totp), 3)])  # 123 456 ...
             self.status(f'TOTP({digest}): {totp2}')
@@ -351,6 +339,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         if not (r := self.get_record(self.win.idx)):
             return
         if r.url:
+            self.clear_timer.stop()
             str2clipboard(r.url)
             self.status('URL copied to clipboard')
         else:
