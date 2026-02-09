@@ -3,6 +3,7 @@ import os
 import readline
 import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime
 from functools import lru_cache
 from getpass import getpass
@@ -166,3 +167,31 @@ class StopThread(threading.Thread):
                     pthread_kill(self.parent, SIGINT)
                     break
             t = self.timeout - dt
+
+
+class ClearTimer:
+    'timer to clear clipboard'
+
+    def __init__(self, interval: int | float, func):
+        self.interval = interval
+        self.func = func
+        self.timer: threading.Timer | None = None
+
+    def stop(self):
+        t = self.timer
+        if t and t.is_alive():
+            t.cancel()
+        self.timer = None
+
+    def start(self):
+        self.stop()
+        self.timer = threading.Timer(self.interval, self.func)
+        self.timer.start()
+
+    @contextmanager
+    def stop_start(self):
+        self.stop()
+        try:
+            yield
+        finally:
+            self.start()
