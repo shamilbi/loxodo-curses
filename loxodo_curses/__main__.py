@@ -267,6 +267,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         win.refresh()
 
     def search(self):
+        self.clear_timer.stop()
         ok, s = input_search(self, self.prompt_search.lstrip())
         if ok:
             self.filter.set(s)
@@ -386,6 +387,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
     def edit_record(self, i: int, passwd=False):
         if not (r := self.get_record(i)):
             return
+        self.clear_timer.stop()
         with escape2terminal(self):
             if edit_record(r, passwd=passwd):
                 try:
@@ -414,6 +416,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
     def duplicate_record(self, i: int):
         if not (r := self.get_record(i)):
             return
+        self.clear_timer.stop()
         r2 = duplicate_record(r)
         with escape2terminal(self):
             if edit_record(r2, passwd=True):
@@ -430,6 +433,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
     def insert_record(self, i: int):
         r = Record.create()
+        self.clear_timer.stop()
         with escape2terminal(self):
             if edit_record(r, passwd=True):
                 try:
