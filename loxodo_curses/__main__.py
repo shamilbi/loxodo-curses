@@ -267,7 +267,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         win.refresh()
 
     def search(self):
-        self.clear_clipboard2()
+        self.clear_timer.stop()
         ok, s = input_search(self, self.prompt_search.lstrip())
         if ok:
             self.filter.set(s)
@@ -291,7 +291,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         if not (r := self.get_record(self.win.idx)):
             return
         if r.user:
-            self.clear_clipboard2()
+            self.clear_timer.stop()
             str2clipboard(r.user)
             self.status('Username copied to clipboard')
         else:
@@ -299,17 +299,13 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
     def shutdown(self, *_):
         self.stop.set()
-        self.clear_clipboard2()
+        self.clear_timer.stop()
+        str2clipboard('')
         super().shutdown(*_)
 
     def clear_clipboard(self):
         str2clipboard('')
         self.status('')
-
-    def clear_clipboard2(self):
-        'quietly stop clear timer and erase clipboard'
-        self.clear_timer.stop()
-        str2clipboard('')
 
     def passwd2clipboard(self):
         if not (r := self.get_record(self.win.idx)):
@@ -345,7 +341,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         if not (r := self.get_record(self.win.idx)):
             return
         if r.url:
-            self.clear_clipboard2()
+            self.clear_timer.stop()
             str2clipboard(r.url)
             self.status('URL copied to clipboard')
         else:
@@ -392,7 +388,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
     def edit_record(self, i: int, passwd=False):
         if not (r := self.get_record(i)):
             return
-        self.clear_clipboard2()
+        self.clear_timer.stop()
         with escape2terminal(self):
             if edit_record(r, passwd=passwd):
                 try:
@@ -421,7 +417,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
     def duplicate_record(self, i: int):
         if not (r := self.get_record(i)):
             return
-        self.clear_clipboard2()
+        self.clear_timer.stop()
         r2 = duplicate_record(r)
         with escape2terminal(self):
             if edit_record(r2, passwd=True):
@@ -438,7 +434,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
     def insert_record(self, i: int):
         r = Record.create()
-        self.clear_clipboard2()
+        self.clear_timer.stop()
         with escape2terminal(self):
             if edit_record(r, passwd=True):
                 try:
