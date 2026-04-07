@@ -14,7 +14,7 @@ from threading import Event
 import mintotp  # type: ignore[import-untyped]
 
 from . import __project_name__, __version__
-from .curses_utils import App, ask_delete, escape2terminal, input_search, set_terminal_title, win_addstr, win_help
+from .curses_utils import App, ask_delete, escape2terminal, input_search, start_curses_app, win_addstr, win_help
 from .curses_utils.list1 import List, ListProto
 from .utils import (
     ClearTimer,
@@ -484,8 +484,7 @@ def main():
     except KeyboardInterrupt:
         return
     main2_ = partial(main2, vault, fpath, passwd)
-    set_terminal_title(f'{__project_name__} v{__version__}')
-    curses.wrapper(main2_)
+    start_curses_app(main2_, __project_name__, __version__)
 
 
 if __name__ == '__main__':
