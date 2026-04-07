@@ -13,8 +13,8 @@ from threading import Event
 
 import mintotp  # type: ignore[import-untyped]
 
-from . import __version__
-from .curses_utils import App, ask_delete, escape2terminal, input_search, win_addstr, win_help
+from . import __project_name__, __version__
+from .curses_utils import App, ask_delete, escape2terminal, input_search, set_terminal_title, win_addstr, win_help
 from .curses_utils.list1 import List, ListProto
 from .utils import (
     ClearTimer,
@@ -225,7 +225,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         self.screen.clear()
 
         header = self.vault.header
-        s = f' Loxodo v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
+        s = f' {__project_name__} v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
         win_addstr(self.screen, 0, 0, s)
 
         win_addstr(self.screen, 1, 0, self.prompt_search)
@@ -484,6 +484,7 @@ def main():
     except KeyboardInterrupt:
         return
     main2_ = partial(main2, vault, fpath, passwd)
+    set_terminal_title(f'{__project_name__} v{__version__}')
     curses.wrapper(main2_)
 
 
