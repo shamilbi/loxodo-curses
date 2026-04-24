@@ -32,7 +32,7 @@ from .vault import BadPasswordError, Record, Vault, duplicate_record
 from .vault_utils import edit_record, record2str
 
 HELP = [
-    ("h", "This help screen"),
+    ("F1", "This help screen"),
     ("q, Esc", "Quit the program"),
     ("j, Down", "Move selection down"),
     ("k, Up", "Move selection up"),
@@ -370,7 +370,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
                 self.change_vault_passwd()  # not using curses
             elif char == 'L':
                 self.run_url()
-            elif char.upper() == 'H':  # Print help screen
+            elif char_ord == curses.KEY_F1:
                 win_help(self.win.win, HELP)
                 self.refresh_all()
             elif char_ord == 12:  # ^L
