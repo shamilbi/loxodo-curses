@@ -14,7 +14,7 @@ or ":read !diceware -d ' ' -s 2" (`diceware`_) or ":read !pwgen -s 25" (`pwgen`_
 The app includes a timeout feature that automatically closes it after 30 minutes of inactivity.
 
 The current hotkeys are:
-    * h: help screen
+    * F1: help screen
     * q, Esc: Quit the program
     * j, Down: Move selection down
     * k, Up: Move selection up
