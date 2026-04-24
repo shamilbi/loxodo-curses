@@ -225,7 +225,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         self.screen.clear()
 
         header = self.vault.header
-        s = f' {__project_name__} v{__version__} - {self.vault_fpath}, {header.last_save} (h - Help)'
+        s = f' {__project_name__} v{__version__}: {self.vault_fpath}, {header.last_save} (F1 - Help)'
         win_addstr(self.screen, 0, 0, s)
 
         win_addstr(self.screen, 1, 0, self.prompt_search)
