@@ -125,7 +125,7 @@ FILE_MAGIC: bytes = b'PWS3'
 END_OF_FILE: bytes = b"PWS3-EOFPWS3-EOF"
 
 
-def _read_field_tlv(filehandle, cipher) -> Field:
+def _read_field_tlv(filehandle, cipher) -> Field | None:
     """
     Return one field of a vault record by reading from the given file handle.
     """
@@ -156,7 +156,7 @@ class Record:
     """
 
     raw_fields: dict[int, Field] = dataclasses.field(default_factory=dict)
-    _uuid: UUID = None
+    _uuid: UUID | None = None
     _group: str = ""
     _title: str = ""
     _user: str = ""
@@ -200,7 +200,7 @@ class Record:
         self.last_mod = int(time.time())
 
     @property
-    def uuid(self) -> UUID:
+    def uuid(self) -> UUID | None:
         return self._uuid
 
     @uuid.setter
@@ -389,16 +389,16 @@ class Vault:
     # 262,144. Older databases are silently upgraded to this vaule when saved.
 
     def __init__(self, password, filename=None):
-        self.f_tag: bytes = None
+        self.f_tag: bytes = b''
         self.f_salt = None
-        self.f_iter = None
+        self.f_iter = 0
         self.f_sha_ps = None
         self.f_b1 = None
         self.f_b2 = None
         self.f_b3 = None
         self.f_b4 = None
         self.f_iv = None
-        self.f_hmac: bytes = None
+        self.f_hmac: bytes = b''
         self.header = Header()
         self.records = []
         if not filename:
@@ -419,7 +419,7 @@ class Vault:
         stretched_password = _stretch_password(password, self.f_salt, self.f_iter)
         self.f_sha_ps = hashlib.sha256(stretched_password).digest()
 
-        cipher = TwofishECB(stretched_password)
+        cipher: TwofishECB | TwofishCBC = TwofishECB(stretched_password)
         self.f_b1 = cipher.encrypt(_urandom(16))
         self.f_b2 = cipher.encrypt(_urandom(16))
         self.f_b3 = cipher.encrypt(_urandom(16))
@@ -459,7 +459,7 @@ class Vault:
         self.f_b3 = filehandle.read(16)  # B3
         self.f_b4 = filehandle.read(16)  # B4
 
-        cipher = TwofishECB(stretched_password)
+        cipher: TwofishECB | TwofishCBC = TwofishECB(stretched_password)
         key_k = cipher.decrypt(self.f_b1) + cipher.decrypt(self.f_b2)
         key_l = cipher.decrypt(self.f_b3) + cipher.decrypt(self.f_b4)
 
@@ -538,7 +538,7 @@ class Vault:
         filehandle.write(self.f_b3)
         filehandle.write(self.f_b4)
 
-        cipher = TwofishECB(stretched_password)
+        cipher: TwofishECB | TwofishCBC = TwofishECB(stretched_password)
         key_k = cipher.decrypt(self.f_b1) + cipher.decrypt(self.f_b2)
         key_l = cipher.decrypt(self.f_b3) + cipher.decrypt(self.f_b4)
 
