@@ -19,21 +19,21 @@
 
 # pylint: disable=too-many-instance-attributes
 
+import dataclasses
 import hashlib
-import struct
-from hmac import HMAC, compare_digest
 import os
+import secrets
+import struct
 import tempfile
 import time
-from enum import IntEnum
-from uuid import UUID, uuid4
-import secrets
-import dataclasses
 from datetime import datetime
+from enum import IntEnum
+from hmac import HMAC, compare_digest
+from uuid import UUID, uuid4
 
-from .twofish.twofish_ecb import TwofishECB
-from .twofish.twofish_cbc import TwofishCBC
 from . import __version__
+from .twofish.twofish_cbc import TwofishCBC
+from .twofish.twofish_ecb import TwofishECB
 
 
 class BadPasswordError(RuntimeError):
@@ -53,6 +53,7 @@ class Field:
     """
     Contains the raw, on-disk representation of a record's field.
     """
+
     raw_type: int
     raw_value: bytes
 
@@ -66,6 +67,7 @@ class Header:
     """
     Contains the fields of a Vault header.
     """
+
     raw_fields: dict[int, Field] = dataclasses.field(default_factory=dict)
 
     def add_raw_field(self, raw_field: Field):
@@ -97,13 +99,15 @@ class Header:
 
 class Headers(IntEnum):
     'currently implemented headers, the rest are saved as is'
+
     VERSION = 0x00  # Version
-    LAST_SAVE = 0x04    # Timestamp of last save
-    WHAT_SAVED = 0x06   # What performed last save
+    LAST_SAVE = 0x04  # Timestamp of last save
+    WHAT_SAVED = 0x06  # What performed last save
 
 
 class Fields(IntEnum):
     'currently implemented fields, the rest are saved as is'
+
     UUID = 0x01
     GROUP = 0x02
     TITLE = 0x03
@@ -111,11 +115,11 @@ class Fields(IntEnum):
     NOTES = 0x05
     PASSWD = 0x06
     CREATED = 0x07
-    LAST_MOD = 0x0c
-    URL = 0x0d
+    LAST_MOD = 0x0C
+    URL = 0x0D
 
 
-END_OF_ENTRY: int = 0xff     # end of header or fields
+END_OF_ENTRY: int = 0xFF  # end of header or fields
 
 FILE_MAGIC: bytes = b'PWS3'
 END_OF_FILE: bytes = b"PWS3-EOFPWS3-EOF"
@@ -136,7 +140,7 @@ def _read_field_tlv(filehandle, cipher) -> Field:
     #   data = [int]
     raw_value = data[5:]
     if raw_len > 11:
-        for _ in range((raw_len+4)//16):
+        for _ in range((raw_len + 4) // 16):
             data = filehandle.read(16)
             if not data or len(data) < 16:
                 raise VaultFormatError("EOF encountered when parsing record field")
@@ -150,6 +154,7 @@ class Record:
     """
     Contains the fields of an individual password record.
     """
+
     raw_fields: dict[int, Field] = dataclasses.field(default_factory=dict)
     _uuid: UUID = None
     _group: str = ""
@@ -378,10 +383,10 @@ class Vault:
     http://passwordsafe.svn.sourceforge.net/viewvc/passwordsafe/trunk/pwsafe/pwsafe/docs/formatV3.txt?revision=2139
     """
 
-    #write_iter = 2048  # version < 0x030F
+    # write_iter = 2048  # version < 0x030F
     write_iter = 262_144  # version 0x030F
-        # The original minimum was 2,048.  As of file format 0x030F, the minimum is
-        # 262,144. Older databases are silently upgraded to this vaule when saved.
+    # The original minimum was 2,048.  As of file format 0x030F, the minimum is
+    # 262,144. Older databases are silently upgraded to this vaule when saved.
 
     def __init__(self, password, filename=None):
         self.f_tag: bytes = None
@@ -445,7 +450,7 @@ class Vault:
         #   P': the stretched key
         my_sha_ps = hashlib.sha256(stretched_password).digest()
 
-        self.f_sha_ps = filehandle.read(32) # H(P'): SHA-256 hash of stretched passphrase
+        self.f_sha_ps = filehandle.read(32)  # H(P'): SHA-256 hash of stretched passphrase
         if self.f_sha_ps != my_sha_ps:
             raise BadPasswordError("Wrong password")
 
@@ -493,7 +498,6 @@ class Vault:
         self.f_hmac = filehandle.read(32)  # HMAC: used to verify Vault's integrity
 
         my_hmac = hmac_checker.digest()
-        #if self.f_hmac != my_hmac:
         if not compare_digest(self.f_hmac, my_hmac):
             # https://docs.python.org/3.10/library/hmac.html#hmac.HMAC.digest
             # When comparing the output of digest() to an externally supplied
@@ -569,12 +573,11 @@ class Vault:
         """
 
         # write to temporary file first
-        (osfilehandle, tmpfilename) = tempfile.mkstemp(
-            '.part', os.path.basename(filename) + ".", os.path.dirname(filename), text=False)
-        #filehandle = os.fdopen(osfilehandle, "wb")
+        osfilehandle, tmpfilename = tempfile.mkstemp(
+            '.part', os.path.basename(filename) + ".", os.path.dirname(filename), text=False
+        )
         with open(osfilehandle, 'wb') as filehandle:
             self.write_to_stream(filehandle, password)
-        #filehandle.close()
 
         try:
             _ = Vault(password, filename=tmpfilename)
