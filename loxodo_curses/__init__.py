@@ -1,2 +1,2 @@
 __project_name__ = 'loxodo-curses'
-__version__ = '0.30.1'
+__version__ = '0.31.0'
