@@ -14,7 +14,16 @@ or ":read !diceware -d ' ' -s 2" (`diceware`_) or ":read !pwgen -s 25" (`pwgen`_
 
 The app includes a timeout feature that automatically closes it after 30 minutes of inactivity.
 
-The current hotkeys are:
+Security considerations
+-----------------------
+
+This code handles private key material and is written in Python.
+No precautions have been taken to lock pages in memory to prevent swapping.
+Also no attempt is currently made to securely dispose of memory that may have held private key material.
+
+The current hotkeys
+-------------------
+
     * F1: help screen
     * q, Esc: Quit the program
     * j, Down: Move selection down
