@@ -42,10 +42,11 @@ The current hotkeys
     * L: Launch URL
     * s: Search records
     * P: Change vault password
+    * Ctrl-T: Copy Title to clipboard
     * Ctrl-U: Copy Username to clipboard
     * Ctrl-P: Copy Password to clipboard
     * Ctrl-L: Copy URL to clipboard
-    * Ctrl-T: Copy TOTP to clipboard
+    * Ctrl-O: Copy TOTP to clipboard
 
 .. |pypi| image:: https://img.shields.io/pypi/v/loxodo-curses
           :target: https://pypi.org/project/loxodo-curses/
