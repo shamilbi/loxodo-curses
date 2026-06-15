@@ -14,8 +14,10 @@ from threading import Event
 import mintotp  # type: ignore[import-untyped]
 
 from . import __project_name__, __version__
-from .curses_utils import App, ask_delete, escape2terminal, input_search, start_curses_app, win_addstr, win_help
+from .curses_utils.app import App, escape2terminal, input_search, start_curses_app
 from .curses_utils.list1 import List, ListProto
+from .curses_utils.text import win_help
+from .curses_utils.win import ask_delete, win_addstr
 from .utils import (
     ClearTimer,
     FilterString,
@@ -50,10 +52,11 @@ HELP = [
     ("L", "Launch URL"),
     ("s", "Search records"),
     ("P", "Change vault password"),
+    ("Ctrl-T", "Copy Title to clipboard"),
     ("Ctrl-U", "Copy Username to clipboard"),
     ("Ctrl-P", "Copy Password to clipboard"),
     ("Ctrl-L", "Copy URL to clipboard"),
-    ("Ctrl-T", "Copy TOTP to clipboard"),
+    ("Ctrl-O", "Copy TOTP to clipboard"),
 ]
 
 SORT: dict[str, Callable[[Record], tuple]] = {
@@ -347,6 +350,16 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         else:
             self.status('URL is empty')
 
+    def title2clipboard(self):
+        if not (r := self.get_record(self.win.idx)):
+            return
+        if r.title:
+            self.clear_timer.stop()
+            str2clipboard(r.title)
+            self.status('Title copied to clipboard')
+        else:
+            self.status('URL is empty')
+
     def input_loop(self):  # pylint: disable=too-many-branches,too-many-statements
         for char_ord in self.getch():
             self.stop_thread.reset()
@@ -380,6 +393,8 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
             elif char_ord == 16:  # ^P
                 self.passwd2clipboard()
             elif char_ord == 20:  # ^T
+                self.title2clipboard()
+            elif char_ord == 15:  # ^O
                 self.totp2clipboard()
             else:
                 name = curses.keyname(char_ord).decode('utf-8')
