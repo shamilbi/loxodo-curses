@@ -18,6 +18,7 @@ from .curses_utils.app import App, escape2terminal, input_search, start_curses_a
 from .curses_utils.list1 import List, ListProto
 from .curses_utils.text import win_help
 from .curses_utils.win import ask_delete, win_addstr
+from .file_utils import input_file
 from .utils import (
     ClearTimer,
     FilterString,
@@ -26,7 +27,6 @@ from .utils import (
     chunkstring,
     get_new_passwd,
     get_passwd,
-    input_file,
     int2time,
     str2clipboard,
 )
