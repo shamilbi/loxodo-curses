@@ -1,9 +1,9 @@
 import io
 import os
 import subprocess
-from contextlib import contextmanager
-from typing import Callable, Generator
+from typing import Callable
 
+from .file_utils import create_memfd2
 from .vault import Record
 
 
@@ -95,25 +95,6 @@ def record2file(r: Record, fpath: str, passwd=False):
         record2stream(fp, r, passwd=passwd)
 
 
-# def edit_record(r: Record, passwd: bool = False) -> bool:
-#     fd = None
-#     fpath = ''
-#     try:
-#         fd, fpath = tempfile.mkstemp(dir='/dev/shm', text=True)
-#         record2file(r, fpath, passwd=passwd)
-#         t1 = os.path.getmtime(fpath)
-#         subprocess.run(['vim', fpath], check=False)
-#         t2 = os.path.getmtime(fpath)
-#         if t1 != t2:
-#             file2record(fpath, r, passwd=passwd)  # r changed
-#             return True
-#     finally:
-#         if fd:
-#             os.close(fd)
-#             os.remove(fpath)
-#     return False
-
-
 def edit_record(r: Record, passwd: bool = False) -> bool:
     with create_memfd2('tmp') as (_, fpath):
         record2file(r, fpath, passwd=passwd)
@@ -124,43 +105,3 @@ def edit_record(r: Record, passwd: bool = False) -> bool:
             file2record(fpath, r, passwd=passwd)  # r changed
             return True
     return False
-
-
-def fill_by_0(fpath):
-    "dd if=/dev/zero of=<file> conv=notrunc bs=<size> count=1"
-    size = os.path.getsize(fpath)
-    if size:
-        subprocess.run(
-            ['dd', 'if=/dev/zero', f'of={fpath}', 'conv=notrunc', f'bs={size}', 'count=1'],
-            check=False,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        )
-
-
-@contextmanager
-def create_memfd(name) -> Generator[tuple[int, str]]:
-    """
-    Create an anonymous file in memory.
-    os.memfd_create + close
-    Availability: Linux >= 3.17 with glibc >= 2.27, python >= 3.8
-    """
-    fd = os.memfd_create(name)
-    # fpath = f'/proc/self/fd/{fd}'  # permission denied
-    fpath = f'/proc/{os.getpid()}/fd/{fd}'
-    try:
-        os.chmod(fd, 0o600)
-        yield (fd, fpath)
-    finally:
-        os.close(fd)
-
-
-@contextmanager
-def create_memfd2(name) -> Generator[tuple[int, str]]:
-    "create_memfd + fill by zero + truncate"
-    with create_memfd(name) as (fd, fpath):
-        try:
-            yield (fd, fpath)
-        finally:
-            fill_by_0(fpath)
-            os.truncate(fd, 0)
