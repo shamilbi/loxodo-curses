@@ -20,11 +20,10 @@ from .curses_utils.text import win_help
 from .curses_utils.win import ask_delete, win_addstr
 from .file_utils import input_file
 from .passwd_utils import get_new_passwd, get_passwd
+from .thread_utils import ClearTimer, StopThread
 from .utils import (
-    ClearTimer,
     FilterString,
     RowString,
-    StopThread,
     chunkstring,
     int2time,
     str2clipboard,
