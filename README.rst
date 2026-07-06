@@ -6,11 +6,16 @@ loxodo-curses
 loxodo-curses is a curses frontend to `Password Safe`_ V3 compatible Password Vault.
 A fork of `Loxodo`_.
 
-Editing a record is done with Vim, using an anonymous file in memory (os.memfd_create).
-To launch a URL, xdg-open is used, while copying to the clipboard is handled by xsel.
+It uses external utilities:
+    * vim - to edit a record (using an anonymous file in memory)
+    * xdg-open - to launch a URL
+    * xsel - to copy to the clipboard
+    * dd - to fill a file in memory with zeros
 
 To generate a password, just run the command ":read !pwmake 96" in Vim (pwmake is part of `libpwquality`_)
 or ":read !diceware -d ' ' -s 2" (`diceware`_) or ":read !pwgen -s 25" (`pwgen`_).
+
+Search string may contain word -#tag to exclude tag #tag from the search result.
 
 The app includes a timeout feature that automatically closes it after 30 minutes of inactivity.
 
