@@ -11,7 +11,7 @@ from collections.abc import Callable
 from functools import partial
 from threading import Event
 
-import mintotp  # type: ignore[import-untyped]
+import pyotp
 
 from . import __project_name__, __version__
 from .curses_utils.app import App, escape2terminal, input_search, start_curses_app
@@ -329,7 +329,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         else:
             digest = 'sha1'
         try:
-            totp = mintotp.totp(passwd2, digest=digest)
+            totp = pyotp.TOTP(passwd2, digest=digest).now()
             with self.clear_timer.stop_start():
                 str2clipboard(totp)
             totp2 = ' '.join([totp[i : i + 3] for i in range(0, len(totp), 3)])  # 123 456 ...
