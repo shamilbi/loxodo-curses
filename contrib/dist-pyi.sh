@@ -28,6 +28,7 @@ main2() {
         echo "dir not found: .venv/lib/...site-packages/" | tee -a "$log"
         return 1
     fi
+    export PYTHONPATH="$lib"
 
     echo "---------------------" >>"$log"
     echo "pyinstaller $main_file ..." | tee -a "$log"
@@ -36,8 +37,6 @@ main2() {
         --specpath=tmp
         --workpath=tmp
         --noupx
-        -p "$lib"
-        --hidden-import=mintotp
         --runtime-tmpdir="./tmp"
         --name="$exe_name"
         -F
