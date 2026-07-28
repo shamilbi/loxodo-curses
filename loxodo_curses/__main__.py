@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import binascii
 import curses
 import curses.ascii
@@ -272,7 +274,6 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         ok, s = input_search(self, self.prompt_search.lstrip())
         if ok:
             self.filter.set(s)
-            win_addstr(self.win_search, 0, 0, self.filter.filter_string)
             self.sort2(self.sortedby)
 
     def run_url(self):
@@ -322,7 +323,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         if not (r := self.get_record(self.win.idx)):
             return
         passwd2 = r.passwd.replace(' ', '')  # A B -> AB
-        m = re.match(r'([a-z0-9]+):', passwd2, flags=re.A + re.I)  # sha1:....
+        m = re.match(r'([a-z0-9]+):', passwd2, flags=re.ASCII + re.IGNORECASE)  # sha1:....
         if m:
             digest = m.group(1)
             passwd2 = passwd2[len(digest) + 1 :]
