@@ -7,10 +7,11 @@ loxodo-curses is a curses frontend to `Password Safe`_ V3 compatible Password Va
 A fork of `Loxodo`_.
 
 It uses external utilities:
-    * vim - to edit a record (using an anonymous file in memory)
-    * xdg-open - to launch a URL
-    * xsel - to copy to the clipboard
-    * dd - to fill a file in memory with zeros
+
+* vim - to edit a record (using an anonymous file in memory)
+* xdg-open - to launch a URL
+* xsel - to copy to the clipboard
+* dd - to fill a file in memory with zeros
 
 To generate a password, just run the command ":read !pwmake 96" in Vim (pwmake is part of `libpwquality`_)
 or ":read !diceware -d ' ' -s 2" (`diceware`_) or ":read !pwgen -s 25" (`pwgen`_).
@@ -29,29 +30,29 @@ Also no attempt is currently made to securely dispose of memory that may have he
 The current hotkeys
 -------------------
 
-    * F1: help screen
-    * q, Esc: Quit the program
-    * j, Down: Move selection down
-    * k, Up: Move selection up
-    * PgUp: Page up
-    * PgDown: Page down
-    * g, Home: Move to first item
-    * G, End: Move to last item
-    * Alt-{t,u,m,c,g}: Sort by title, user, modtime, created, group
-    * Alt-{T,U,M,C,G}: Sort reversed
-    * Delete: Delete current record
-    * Insert: Insert record
-    * d: Duplicate current record
-    * e: Edit current record w/o password
-    * E: Edit current record w/ password
-    * L: Launch URL
-    * s: Search records
-    * P: Change vault password
-    * Ctrl-T: Copy Title to clipboard
-    * Ctrl-U: Copy Username to clipboard
-    * Ctrl-P: Copy Password to clipboard
-    * Ctrl-L: Copy URL to clipboard
-    * Ctrl-O: Copy TOTP to clipboard
+* F1: help screen
+* q, Esc: Quit the program
+* j, Down: Move selection down
+* k, Up: Move selection up
+* PgUp: Page up
+* PgDown: Page down
+* g, Home: Move to first item
+* G, End: Move to last item
+* Alt-{t,u,m,c,g}: Sort by title, user, modtime, created, group
+* Alt-{T,U,M,C,G}: Sort reversed
+* Delete: Delete current record
+* Insert: Insert record
+* d: Duplicate current record
+* e: Edit current record w/o password
+* E: Edit current record w/ password
+* L: Launch URL
+* s: Search records
+* P: Change vault password
+* Ctrl-T: Copy Title to clipboard
+* Ctrl-U: Copy Username to clipboard
+* Ctrl-P: Copy Password to clipboard
+* Ctrl-L: Copy URL to clipboard
+* Ctrl-O: Copy TOTP to clipboard
 
 .. |pypi| image:: https://img.shields.io/pypi/v/loxodo-curses
           :target: https://pypi.org/project/loxodo-curses/
