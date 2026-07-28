@@ -2,10 +2,9 @@ import curses
 import curses.ascii
 import os
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from signal import SIGINT, SIGTERM, SIGWINCH, signal
-from typing import Generator
 
 from .win import get_alt_key, set_terminal_title
 
@@ -23,13 +22,14 @@ class App:
         curses.noecho()
         curses.start_color()
 
-        self.screen_size = (curses.LINES, curses.COLS)  # pylint: disable=no-member
-
     def sigwinch_handler(self, *_):
-        maxx, maxy = os.get_terminal_size()
-        self.screen_size = (maxy, maxx)
         self.create_windows()
         self.refresh_all()
+
+    @property
+    def screen_size(self) -> tuple[int, int]:
+        maxx, maxy = os.get_terminal_size()
+        return (maxy, maxx)
 
     def shutdown(self, *_):
         if curses.isendwin():
