@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #
 
-# pylint: disable=too-many-instance-attributes
+from __future__ import annotations
 
 import dataclasses
 import hashlib
@@ -34,6 +34,8 @@ from uuid import UUID, uuid4
 from . import __version__
 from .twofish.twofish_cbc import TwofishCBC
 from .twofish.twofish_ecb import TwofishECB
+
+# pylint: disable=too-many-instance-attributes
 
 
 class BadPasswordError(RuntimeError):
@@ -85,6 +87,7 @@ class Header:
         if Headers.LAST_SAVE in self.raw_fields:
             field = self.raw_fields[Headers.LAST_SAVE]
             i = struct.unpack("<L", field.raw_value)[0]
+            # ruff: noqa: DTZ006
             return datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
         return ""
 
@@ -407,7 +410,7 @@ class Vault:
             self._read_from_file(filename, password)
 
     @staticmethod
-    def create(password, filename) -> "Vault":
+    def create(password, filename) -> Vault:
         vault = Vault(password)
         vault.write_to_file(filename, password)
         return vault
