@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import threading
 import time
 from contextlib import contextmanager
@@ -49,7 +51,7 @@ class StopThread(threading.Thread):
 class ClearTimer:
     'timer to clear clipboard'
 
-    def __init__(self, interval: int | float, func):
+    def __init__(self, interval: float, func):
         self.interval = interval
         self.func = func
         self.timer: threading.Timer | None = None
