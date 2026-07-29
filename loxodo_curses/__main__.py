@@ -14,12 +14,12 @@ from functools import partial
 from threading import Event
 
 import pyotp
+from curses_utils2.app import App, escape2terminal, input_search, start_curses_app
+from curses_utils2.list1 import List, ListProto
+from curses_utils2.text import win_help
+from curses_utils2.win import ask_delete, win_addstr
 
 from . import __project_name__, __version__
-from .curses_utils.app import App, escape2terminal, input_search, start_curses_app
-from .curses_utils.list1 import List, ListProto
-from .curses_utils.text import win_help
-from .curses_utils.win import ask_delete, win_addstr
 from .file_utils import input_file
 from .passwd_utils import get_new_passwd, get_passwd
 from .thread_utils import ClearTimer, StopThread
