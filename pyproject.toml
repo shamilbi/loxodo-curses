@@ -14,6 +14,7 @@ license-files = ["LICENSE.txt"]
 requires-python = ">=3.9"
 dependencies = [
     "pyotp",
+    "curses-utils2",
 ]
 
 dynamic = ["version"]
