@@ -97,7 +97,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         # title, user, last_mod, created, group
         self.row_string = RowString(35, 30, 19, 19, 0)
 
-        self.create_windows()
+        # self.create_windows()
 
         self.clear_timer = ClearTimer(10, self.clear_clipboard)
 
@@ -226,6 +226,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
     def refresh_all(self):
         self.screen.clear()
+        self.create_windows()
 
         header = self.vault.header
         s = f' {__project_name__} v{__version__}: {self.vault_fpath}, {header.last_save} (F1 - Help)'
