@@ -97,7 +97,8 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         # title, user, last_mod, created, group
         self.row_string = RowString(35, 30, 19, 19, 0)
 
-        # self.create_windows()
+        self.win = List(self, current_color=curses.color_pair(1) | curses.A_BOLD)
+        self.create_windows()
 
         self.clear_timer = ClearTimer(10, self.clear_clipboard)
 
@@ -158,8 +159,10 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         len_ = len(prompt)
         self.win_search = self.screen.derwin(1, maxx - len_, 1, len_)
 
+        self.list_header = self.screen.derwin(maxy - 3, maxx, 2, 0)
+
         win = self.screen.derwin(rows, cols1 - 3, 4, 2)
-        self.win = List(win, self, current_color=curses.color_pair(1) | curses.A_BOLD)
+        self.win.set_win(win)
 
         if no_win2:
             self.win2 = None
@@ -225,8 +228,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         return self.row_string.value(*headers)
 
     def refresh_all(self):
-        self.screen.clear()
-        self.create_windows()
+        self.screen.erase()
 
         header = self.vault.header
         s = f' {__project_name__} v{__version__}: {self.vault_fpath}, {header.last_save} (F1 - Help)'
@@ -239,12 +241,10 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         win_addstr(self.win_search, 0, 0, self.filter.filter_string)
         self.win_search.refresh()
 
-        maxy, maxx = self.screen_size
-        win = self.screen.derwin(maxy - 3, maxx, 2, 0)
-        win.erase()
-        win_addstr(win, 1, 2, self.create_header())
-        win.box()
-        win.refresh()
+        self.list_header.erase()
+        win_addstr(self.list_header, 1, 2, self.create_header())
+        self.list_header.box()
+        self.list_header.refresh()
 
         self.win.refresh()
 
