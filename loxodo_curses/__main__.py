@@ -184,6 +184,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         if idx < len(self.records):
             r = self.records[idx]
             record2win(r, win)
+            win.refresh()
         self.win2.refresh()
 
     def del_record(self, i: int):
