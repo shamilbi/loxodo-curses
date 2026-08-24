@@ -16,6 +16,7 @@ from threading import Event
 import pyotp
 from curses_utils2.app import App, escape2terminal, input_search, start_curses_app
 from curses_utils2.list1 import List, ListProto
+from curses_utils2.listbox import ListBox
 from curses_utils2.text import win_help
 from curses_utils2.win import ask_delete, win_addstr
 
@@ -98,6 +99,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         self.row_string = RowString(35, 30, 19, 19, 0)
 
         self.win = List(self, current_color=curses.color_pair(1) | curses.A_BOLD)
+        self.listbox = ListBox(self.win, header=1)
         self.create_windows()
 
         self.clear_timer = ClearTimer(10, self.clear_clipboard)
@@ -149,7 +151,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         '''
         maxy, maxx = self.screen_size
 
-        rows, cols = (maxy - 6, maxx)
+        cols = maxx
         cols2 = min(cols // 3, 35)
         cols1 = cols - cols2
         if no_win2 := cols1 < sum(self.row_string.widths[:2]):
@@ -159,10 +161,8 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         len_ = len(prompt)
         self.win_search = self.screen.derwin(1, maxx - len_, 1, len_)
 
-        self.list_header = self.screen.derwin(maxy - 3, maxx, 2, 0)
-
-        win = self.screen.derwin(rows, cols1 - 3, 4, 2)
-        self.win.set_win(win)
+        win = self.screen.derwin(maxy - 3, cols1 + 1, 2, 0)
+        self.listbox.set_win(win)
 
         if no_win2:
             self.win2 = None
@@ -242,12 +242,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         win_addstr(self.win_search, 0, 0, self.filter.filter_string)
         self.win_search.refresh()
 
-        self.list_header.erase()
-        win_addstr(self.list_header, 1, 2, self.create_header())
-        self.list_header.box()
-        self.list_header.refresh()
-
-        self.win.refresh()
+        self.listbox.refresh(self.create_header())
 
         if self.win2:
             self.win2.erase()
