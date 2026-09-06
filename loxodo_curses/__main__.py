@@ -161,7 +161,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         len_ = len(prompt)
         self.win_search = self.screen.derwin(1, maxx - len_, 1, len_)
 
-        win = self.screen.derwin(maxy - 3, cols1 + 1, 2, 0)
+        win = self.screen.derwin(maxy - 3, cols1, 2, 0)
         self.listbox.set_win(win)
 
         if no_win2:
@@ -246,7 +246,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
         if self.win2:
             self.win2.erase()
-            self.win2.border(0, 0, 0, 0, curses.ACS_TTEE, 0, curses.ACS_BTEE, 0)
+            self.win2.box()
             self.win2.refresh()
 
         self.refresh_win_deps()
