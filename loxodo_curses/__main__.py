@@ -77,8 +77,8 @@ HEADERS: dict[str, str] = {
 }
 
 SORT_KEYS = ('t', 'u', 'm', 'c', 'g')
-SORT_UP = '\u2191'
-SORT_DOWN = '\u2193'
+SORT_UP = '\u2191'  # ↑
+SORT_DOWN = '\u2193'  # ↓
 
 
 class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
@@ -96,7 +96,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         self.sort()
 
         # title, user, last_mod, created, group
-        self.row_string = RowString(35, 30, 19, 19, 0)
+        self.row_string = RowString(35, 30, 10, 10, 0)
 
         self.win = List(self, current_color=curses.color_pair(1) | curses.A_BOLD)
         self.listbox = ListBox(self.win, header=1)
@@ -152,9 +152,10 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         maxy, maxx = self.screen_size
 
         cols = maxx
-        cols2 = min(cols // 3, 35)
+        cols2 = 35
         cols1 = cols - cols2
-        if no_win2 := cols1 < sum(self.row_string.widths[:2]):
+        min_width1 = sum(self.row_string.widths[:2]) + 3 + 2  # 3 spaces + 2 border
+        if no_win2 := (cols - cols2) < min_width1:
             cols1 = cols
 
         prompt = self.prompt_search = ' Search: '
@@ -205,7 +206,13 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
     def get_record_str(self, i: int) -> str:
         if not (r := self.get_record(i)):
             return ''
-        return self.row_string.value(r.title, r.user, int2time(r.last_mod), int2time(r.created), r.group)
+        return self.row_string.value(
+            r.title,
+            r.user,
+            int2time(r.last_mod, '%Y-%m-%d'),
+            int2time(r.created, '%Y-%m-%d'),
+            r.group,
+        )
 
     def records_len(self) -> int:
         return len(self.records)
@@ -463,6 +470,18 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 def record2win(r: Record, win):
     rows, cols = win.getmaxyx()
     row = -1
+
+    # time
+    for i, prefix in [(r.created, 'Created'), (r.last_mod, 'Modified')]:
+        row += 1
+        s = int2time(i, '%Y-%m-%d %H:%M:%S')
+        win_addstr(win, row, 0, f'{prefix}: {s}')
+
+    # separator
+    row += 1
+    win_addstr(win, row, 0, '')
+
+    # record
     for line in record2str(r).splitlines():
         for s in chunkstring(line, cols):
             row += 1
