@@ -15,10 +15,10 @@ from threading import Event
 
 import pyotp
 from curses_utils2.app import App, escape2terminal, input_search, start_curses_app
-from curses_utils2.list1 import List, ListProto
-from curses_utils2.listbox import ListBox
+from curses_utils2.list1_v2 import ListProto, ListV2
 from curses_utils2.text import win_help
 from curses_utils2.win import ask_delete, win_addstr
+from curses_utils2.winbox import WinBox, WinProto
 
 from . import __project_name__, __version__
 from .file_utils import input_file
@@ -81,7 +81,52 @@ SORT_UP = '\u2191'  # ↑
 SORT_DOWN = '\u2193'  # ↓
 
 
-class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
+class Win2(WinProto):
+    def __init__(self, app: Main):
+        self.app = app
+        self.win: curses.window | None = None
+
+    def set_win(self, win: curses.window | None):
+        self.win = win
+
+    def refresh(self):
+        if not self.win:
+            return
+        app = self.app
+        win = self.win
+
+        win.erase()
+        idx = app.win.idx
+        if idx < len(app.records):
+            r = app.records[idx]
+            record2win(r, win)
+        win.refresh()
+
+
+class List1(ListProto):
+    def __init__(self, app: Main):
+        self.app = app
+
+    def get_record_str(self, i: int) -> str:
+        app = self.app
+        if not (r := app.get_record(i)):
+            return ''
+        return app.row_string.value(
+            r.title,
+            r.user,
+            int2time(r.last_mod, '%Y-%m-%d'),
+            int2time(r.created, '%Y-%m-%d'),
+            r.group,
+        )
+
+    def records_len(self) -> int:
+        return len(self.app.records)
+
+    def refresh_win_deps(self):
+        self.app.win2box.refresh()
+
+
+class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     def __init__(self, vault: Vault, fpath: str, passwd: bytes, screen):
         super().__init__(screen)
 
@@ -98,8 +143,14 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         # title, user, last_mod, created, group
         self.row_string = RowString(35, 30, 10, 10, 0)
 
-        self.win = List(self, current_color=curses.color_pair(1) | curses.A_BOLD)
-        self.listbox = ListBox(self.win, header=1)
+        self.win = ListV2(
+            List1(self),
+            current_color=curses.color_pair(1) | curses.A_BOLD,
+        )
+        self.listbox = WinBox(self.win, offy=1)
+
+        self.win2box = WinBox(Win2(self))
+
         self.create_windows()
 
         self.clear_timer = ClearTimer(10, self.clear_clipboard)
@@ -125,7 +176,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
     def sort2(self, sortby: str):
         idx = self.win.idx
         uuid = None
-        if idx < self.records_len():
+        if idx < len(self.records):
             r = self.records[idx]
             uuid = r.uuid  # to find the record after sorting
         if not self.sort(sortby):
@@ -166,27 +217,13 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         self.listbox.set_win(win)
 
         if no_win2:
-            self.win2 = None
+            win2 = None
         else:
-            self.win2 = self.screen.derwin(maxy - 3, cols2, 2, cols1)
+            win2 = self.screen.derwin(maxy - 3, cols2, 2, cols1)
+        self.win2box.set_win(win2)
 
         # status
         self.win3 = self.screen.derwin(1, maxx, maxy - 1, 0)
-
-    def refresh_win_deps(self):
-        if not self.win2:
-            return
-        rows, cols = self.win2.getmaxyx()
-        rows -= 2  # -borders
-        cols -= 2  # -borders
-        win = self.win2.derwin(rows, cols, 1, 1)
-        win.erase()
-        idx = self.win.idx
-        if idx < len(self.records):
-            r = self.records[idx]
-            record2win(r, win)
-            win.refresh()
-        self.win2.refresh()
 
     def del_record(self, i: int):
         if not (r := self.get_record(i)):
@@ -202,20 +239,6 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
         if not i < len_:
             return None
         return self.records[i]
-
-    def get_record_str(self, i: int) -> str:
-        if not (r := self.get_record(i)):
-            return ''
-        return self.row_string.value(
-            r.title,
-            r.user,
-            int2time(r.last_mod, '%Y-%m-%d'),
-            int2time(r.created, '%Y-%m-%d'),
-            r.group,
-        )
-
-    def records_len(self) -> int:
-        return len(self.records)
 
     def filter_record(self, record):
         return self.filter.found(record.title, record.user, tags=record.group)
@@ -237,13 +260,13 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
     def refresh_all(self):
         self.screen.erase()
+        self.screen.refresh()
 
         header = self.vault.header
         s = f' {__project_name__} v{__version__}: {self.vault_fpath}, {header.last_save} (F1 - Help)'
         win_addstr(self.screen, 0, 0, s)
 
         win_addstr(self.screen, 1, 0, self.prompt_search)
-        self.screen.refresh()
 
         self.win_search.erase()
         win_addstr(self.win_search, 0, 0, self.filter.filter_string)
@@ -251,12 +274,7 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
 
         self.listbox.refresh(self.create_header())
 
-        if self.win2:
-            self.win2.erase()
-            self.win2.box()
-            self.win2.refresh()
-
-        self.refresh_win_deps()
+        self.screen.refresh()
 
     def run(self):
         self.refresh_all()
@@ -387,8 +405,10 @@ class Main(App, ListProto):  # pylint: disable=too-many-instance-attributes,too-
             elif char == 'L':
                 self.run_url()
             elif char_ord == curses.KEY_F1:
-                win_help(self.win.win, HELP)
-                self.refresh_all()
+                win = self.win.win
+                if win:
+                    win_help(win, HELP)
+                    self.refresh_all()
             elif char_ord == 12:  # ^L
                 self.url2clipboard()
             elif char_ord == 21:  # ^U
