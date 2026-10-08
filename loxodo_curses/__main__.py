@@ -9,13 +9,13 @@ import shutil
 import subprocess
 import time
 import webbrowser
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from functools import partial
 from threading import Event
 
 import pyotp
 from curses_utils2.app import App, escape2terminal, input_search, start_curses_app
-from curses_utils2.list1_v2 import ListProto, ListV2
+from curses_utils2.list3_v2 import List3v2, ListProto3
 from curses_utils2.text import win_help
 from curses_utils2.win import ask_delete, win_addstr
 from curses_utils2.winbox import WinBox, WinProto
@@ -96,28 +96,30 @@ class Win2(WinProto):
         win = self.win
 
         win.erase()
-        idx = app.win.idx
-        if idx < len(app.records):
-            r = app.records[idx]
-            record2win(r, win)
+        if app.win.win:
+            idx = app.win.idx
+            if idx < len(app.records):
+                r = app.records[idx]
+                record2win(r, win)
         win.refresh()
 
 
-class List1(ListProto):
+class List1(ListProto3):
     def __init__(self, app: Main):
         self.app = app
 
-    def get_record_str(self, i: int) -> str:
+    def get_record_str(self, i: int) -> Generator[str]:
         app = self.app
         if not (r := app.get_record(i)):
-            return ''
-        return app.row_string.value(
-            r.title,
-            r.user,
-            int2time(r.last_mod, '%Y-%m-%d'),
-            int2time(r.created, '%Y-%m-%d'),
-            r.group,
-        )
+            yield ''
+        else:
+            yield app.row_string.value(
+                r.title,
+                r.user,
+                int2time(r.last_mod, '%Y-%m-%d'),
+                int2time(r.created, '%Y-%m-%d'),
+                r.group,
+            )
 
     def records_len(self) -> int:
         return len(self.app.records)
@@ -143,7 +145,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         # title, user, last_mod, created, group
         self.row_string = RowString(35, 30, 10, 10, 0)
 
-        self.win = ListV2(
+        self.win = List3v2(
             List1(self),
             current_color=curses.color_pair(1) | curses.A_BOLD,
         )
