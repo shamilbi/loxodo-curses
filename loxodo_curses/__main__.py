@@ -307,7 +307,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
             return
         try:
             if shutil.which("xdg-open"):
-                subprocess.run(['xdg-open', r.url], check=False)
+                subprocess.run(['xdg-open', r.url], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             else:
                 webbrowser.open(r.url)
         except ImportError:
