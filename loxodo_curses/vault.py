@@ -87,7 +87,6 @@ class Header:
         if Headers.LAST_SAVE in self.raw_fields:
             field = self.raw_fields[Headers.LAST_SAVE]
             i = struct.unpack("<L", field.raw_value)[0]
-            # ruff: noqa: DTZ006
             return datetime.fromtimestamp(i).strftime('%Y-%m-%d %H:%M:%S')
         return ""
 
