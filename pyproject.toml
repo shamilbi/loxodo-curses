@@ -11,10 +11,10 @@ urls.homepage = 'https://github.com/shamilbi/loxodo-curses'
 license = 'GPL-2.0+'
 license-files = ["LICENSE.txt"]
 
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "pyotp",
-    "curses-utils2>=0.4.1",
+    "curses-utils2>=0.6.0",
 ]
 
 dynamic = ["version"]
