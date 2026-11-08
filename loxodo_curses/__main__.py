@@ -15,24 +15,24 @@ from threading import Event
 
 import pyotp
 from curses_utils2.app import App, escape2terminal, input_search, start_curses_app
+from curses_utils2.file_utils import input_file
 from curses_utils2.list3_v2 import List3v2, ListProto3
+from curses_utils2.record import edit_record, record2str
 from curses_utils2.text import win_help
+from curses_utils2.utils import RowString, chunkstring
 from curses_utils2.win import ask_delete, win_addstr
 from curses_utils2.winbox import WinBox, WinProto
 
 from . import __project_name__, __version__
-from .file_utils import input_file
 from .passwd_utils import get_new_passwd, get_passwd
 from .thread_utils import ClearTimer, StopThread
 from .utils import (
     FilterString,
-    RowString,
-    chunkstring,
     int2time,
     str2clipboard,
 )
 from .vault import BadPasswordError, Record, Vault, duplicate_record
-from .vault_utils import edit_record, record2str
+from .vault_utils import Record2
 
 HELP = [
     ("F1", "This help screen"),
@@ -430,7 +430,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
             return
         self.clear_timer.stop()
         with escape2terminal(self):
-            if edit_record(r, passwd=passwd):
+            if edit_record(Record2(r, passwd=passwd)):
                 try:
                     print('Wait ...')
                     self.vault.write_to_file(self.vault_fpath, self.vault_passwd)
@@ -460,7 +460,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         self.clear_timer.stop()
         r2 = duplicate_record(r)
         with escape2terminal(self):
-            if edit_record(r2, passwd=True):
+            if edit_record(Record2(r2, passwd=True)):
                 try:
                     print('Wait ...')
                     self.vault.records.append(r2)
@@ -476,7 +476,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         r = Record.create()
         self.clear_timer.stop()
         with escape2terminal(self):
-            if edit_record(r, passwd=True):
+            if edit_record(Record2(r, passwd=True)):
                 try:
                     print('Wait ...')
                     self.vault.records.append(r)
@@ -504,7 +504,7 @@ def record2win(r: Record, win):
     win_addstr(win, row, 0, '')
 
     # record
-    for line in record2str(r).splitlines():
+    for line in record2str(Record2(r, passwd=False)).splitlines():
         for s in chunkstring(line, cols):
             row += 1
             if not row < rows:
@@ -518,6 +518,7 @@ def main2(vault: Vault, fpath: str, passwd: bytes, screen):
 
 
 def main():
+    print(f'{__project_name__} v{__version__}')
     try:
         fpath = input_file('Pwsafe file: ')
         if not os.path.exists(fpath):
