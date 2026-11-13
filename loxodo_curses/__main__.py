@@ -143,7 +143,7 @@ class Main(App):  # pylint: disable=too-many-instance-attributes,too-many-public
         self.sort()
 
         # title, user, last_mod, created, group
-        self.row_string = RowString(35, 30, 10, 10, 0)
+        self.row_string = RowString(35, 30, 11, 11, 0)
 
         self.win = List3v2(
             List1(self),
